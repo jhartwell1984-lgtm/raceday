@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#roles">Roles</a>
+        <a href="index.html#aid-stations">Aid Stations</a>
+        <a href="index.html#tracking">Tracking</a>
+        <a href="index.html#memories">Memories</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="auth-page topo-bg">
+    <div class="container">
+      <div class="auth-card">
+        <p class="eyebrow center">Welcome</p>
+        <h1 class="auth-title">Sign in to Crew</h1>
+        <p class="auth-sub">
+          Enter your email and we'll send you a magic link &mdash; no password needed.
+        </p>
+
+        <form id="auth-form" class="auth-form">
+          <div class="auth-toggle" role="radiogroup" aria-label="Account type">
+            <button type="button" class="toggle-btn is-active" data-value="participant">
+              Runner / Crew
+            </button>
+            <button type="button" class="toggle-btn" data-value="race_director">
+              Race Director
+            </button>
+          </div>
+          <input type="hidden" id="account-type" value="participant" />
+
+          <label class="auth-label" for="full-name">Full name</label>
+          <input class="auth-input" type="text" id="full-name" name="full-name" placeholder="Jane Runner" autocomplete="name" required />
+
+          <label class="auth-label" for="email">Email</label>
+          <input class="auth-input" type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+
+          <button type="submit" class="btn btn-primary auth-submit" id="submit-btn">
+            Send Magic Link
+          </button>
+
+          <p class="auth-status" id="auth-status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </span>
+      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      window.location.href = 'dashboard.html';
+    }
+
+    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    const accountTypeInput = document.getElementById('account-type');
+    toggleButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        toggleButtons.forEach((b) => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        accountTypeInput.value = btn.dataset.value;
+      });
+    });
+
+    const form = document.getElementById('auth-form');
+    const statusEl = document.getElementById('auth-status');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullName = document.getElementById('full-name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const accountType = accountTypeInput.value;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      statusEl.textContent = '';
+      statusEl.className = 'auth-status';
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname.replace('login.html', 'dashboard.html'),
+          shouldCreateUser: true,
+          data: {
+            full_name: fullName,
+            account_type: accountType,
+          },
+        },
+      });
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Magic Link';
+
+      if (error) {
+        statusEl.textContent = error.message;
+        statusEl.classList.add('auth-status-error');
+      } else {
+        statusEl.textContent = `Check ${email} for your sign-in link.`;
+        statusEl.classList.add('auth-status-success');
+        form.reset();
+        toggleButtons[0].classList.add('is-active');
+        toggleButtons[1].classList.remove('is-active');
+        accountTypeInput.value = 'participant';
+      }
+    });
+  </script>
+
+</body>
+</html>

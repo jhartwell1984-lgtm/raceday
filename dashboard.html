@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="nav">
+        <span id="welcome-name"></span>
+      </nav>
+      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="auth-page topo-bg">
+    <div class="container">
+      <div class="auth-card dashboard-card" id="dashboard-card" hidden>
+        <p class="eyebrow center" id="account-type-label">Participant</p>
+        <h1 class="auth-title" id="dashboard-heading">Welcome back.</h1>
+        <p class="auth-sub" id="dashboard-sub">
+          This is the start of your Crew dashboard. More is on the way.
+        </p>
+      </div>
+      <p class="auth-status" id="loading-status">Loading your dashboard...</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </span>
+      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const loadingStatus = document.getElementById('loading-status');
+    const dashboardCard = document.getElementById('dashboard-card');
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      window.location.href = 'login.html';
+    } else {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('full_name, email, account_type')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !profile) {
+        loadingStatus.textContent = 'Could not load your profile. Try signing in again.';
+      } else {
+        const isDirector = profile.account_type === 'race_director';
+        document.getElementById('welcome-name').textContent = profile.full_name || profile.email;
+        document.getElementById('account-type-label').textContent = isDirector
+          ? 'Race Director'
+          : 'Runner / Crew';
+        document.getElementById('dashboard-heading').textContent = `Welcome, ${profile.full_name || 'there'}.`;
+        document.getElementById('dashboard-sub').textContent = isDirector
+          ? 'Your race, aid station, and crew assignment tools will show up here.'
+          : 'Your race plan, aid station details, and crew tools will show up here.';
+
+        loadingStatus.hidden = true;
+        dashboardCard.hidden = false;
+      }
+    }
+
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+  </script>
+
+</body>
+</html>

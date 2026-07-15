@@ -26,14 +26,23 @@
   <main class="auth-page topo-bg">
     <div class="container">
       <div class="auth-card">
-        <p class="eyebrow center">Welcome</p>
-        <h1 class="auth-title">Sign in to Crew</h1>
-        <p class="auth-sub">
-          Enter your email and we'll send you a magic link &mdash; no password needed.
+        <div class="auth-toggle" role="tablist" aria-label="Sign in or create account">
+          <button type="button" class="toggle-btn is-active" id="mode-signin" role="tab" aria-selected="true">
+            Sign In
+          </button>
+          <button type="button" class="toggle-btn" id="mode-signup" role="tab" aria-selected="false">
+            Create Account
+          </button>
+        </div>
+
+        <p class="eyebrow center" id="auth-eyebrow">Welcome Back</p>
+        <h1 class="auth-title" id="auth-title">Sign in to Crew</h1>
+        <p class="auth-sub" id="auth-sub">
+          Enter your email and password to get to your dashboard.
         </p>
 
         <form id="auth-form" class="auth-form">
-          <div class="auth-toggle" role="radiogroup" aria-label="Account type">
+          <div class="auth-toggle" id="account-type-toggle" role="radiogroup" aria-label="Account type" hidden>
             <button type="button" class="toggle-btn is-active" data-value="participant">
               Runner / Crew
             </button>
@@ -43,17 +52,21 @@
           </div>
           <input type="hidden" id="account-type" value="participant" />
 
-          <label class="auth-label" for="full-name">Full name</label>
-          <input class="auth-input" type="text" id="full-name" name="full-name" placeholder="Jane Runner" autocomplete="name" required />
+          <label class="auth-label full-name-el" for="full-name">Full name</label>
+          <input class="auth-input full-name-el" type="text" id="full-name" name="full-name" placeholder="Jane Runner" autocomplete="name" />
 
           <label class="auth-label" for="email">Email</label>
           <input class="auth-input" type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
 
+          <label class="auth-label" for="password">Password</label>
+          <input class="auth-input" type="password" id="password" name="password" placeholder="At least 6 characters" autocomplete="current-password" required minlength="6" />
+
           <button type="submit" class="btn btn-primary auth-submit" id="submit-btn">
-            Send Magic Link
+            Sign In
           </button>
 
           <p class="auth-status" id="auth-status" aria-live="polite"></p>
+          <p class="field-hint" id="forgot-password-link"><a href="#" id="forgot-password">Forgot password?</a></p>
         </form>
       </div>
     </div>
@@ -77,56 +90,137 @@
       window.location.href = 'dashboard.html';
     }
 
-    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    const dashboardUrl = window.location.origin + window.location.pathname.replace('login.html', 'dashboard.html');
+
+    const modeSignIn = document.getElementById('mode-signin');
+    const modeSignUp = document.getElementById('mode-signup');
+    const accountTypeToggle = document.getElementById('account-type-toggle');
+    const accountTypeButtons = accountTypeToggle.querySelectorAll('.toggle-btn');
     const accountTypeInput = document.getElementById('account-type');
-    toggleButtons.forEach((btn) => {
+    const fullNameEls = document.querySelectorAll('.full-name-el');
+    const fullNameInput = document.getElementById('full-name');
+    const passwordInput = document.getElementById('password');
+    const eyebrow = document.getElementById('auth-eyebrow');
+    const title = document.getElementById('auth-title');
+    const sub = document.getElementById('auth-sub');
+    const submitBtn = document.getElementById('submit-btn');
+    const statusEl = document.getElementById('auth-status');
+    const forgotLinkWrap = document.getElementById('forgot-password-link');
+
+    let mode = 'signin';
+
+    function setMode(newMode) {
+      mode = newMode;
+      statusEl.textContent = '';
+      statusEl.className = 'auth-status';
+
+      const show = (el) => { el.hidden = false; el.style.display = ''; };
+      const hide = (el) => { el.hidden = true; el.style.display = 'none'; };
+
+      if (mode === 'signup') {
+        modeSignUp.classList.add('is-active');
+        modeSignIn.classList.remove('is-active');
+        show(accountTypeToggle);
+        fullNameEls.forEach(show);
+        fullNameInput.required = true;
+        passwordInput.autocomplete = 'new-password';
+        eyebrow.textContent = 'Get Started';
+        title.textContent = 'Create your account';
+        sub.textContent = "You'll get a confirmation email once — after that, just sign in with your password.";
+        submitBtn.textContent = 'Create Account';
+        hide(forgotLinkWrap);
+      } else {
+        modeSignIn.classList.add('is-active');
+        modeSignUp.classList.remove('is-active');
+        hide(accountTypeToggle);
+        fullNameEls.forEach(hide);
+        fullNameInput.required = false;
+        passwordInput.autocomplete = 'current-password';
+        eyebrow.textContent = 'Welcome Back';
+        title.textContent = 'Sign in to Crew';
+        sub.textContent = 'Enter your email and password to get to your dashboard.';
+        submitBtn.textContent = 'Sign In';
+        show(forgotLinkWrap);
+      }
+    }
+
+    modeSignIn.addEventListener('click', () => setMode('signin'));
+    modeSignUp.addEventListener('click', () => setMode('signup'));
+    setMode('signin');
+
+    accountTypeButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
-        toggleButtons.forEach((b) => b.classList.remove('is-active'));
+        accountTypeButtons.forEach((b) => b.classList.remove('is-active'));
         btn.classList.add('is-active');
         accountTypeInput.value = btn.dataset.value;
       });
     });
 
+    document.getElementById('forgot-password').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        statusEl.textContent = 'Enter your email above first, then click "Forgot password?"';
+        statusEl.className = 'auth-status auth-status-error';
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: dashboardUrl });
+      statusEl.textContent = error ? error.message : `Password reset link sent to ${email}.`;
+      statusEl.className = 'auth-status ' + (error ? 'auth-status-error' : 'auth-status-success');
+    });
+
     const form = document.getElementById('auth-form');
-    const statusEl = document.getElementById('auth-status');
-    const submitBtn = document.getElementById('submit-btn');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fullName = document.getElementById('full-name').value.trim();
       const email = document.getElementById('email').value.trim();
-      const accountType = accountTypeInput.value;
+      const password = passwordInput.value;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending...';
       statusEl.textContent = '';
       statusEl.className = 'auth-status';
 
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname.replace('login.html', 'dashboard.html'),
-          shouldCreateUser: true,
-          data: {
-            full_name: fullName,
-            account_type: accountType,
+      if (mode === 'signup') {
+        submitBtn.textContent = 'Creating...';
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: dashboardUrl,
+            data: {
+              full_name: fullNameInput.value.trim(),
+              account_type: accountTypeInput.value,
+            },
           },
-        },
-      });
+        });
 
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Send Magic Link';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
 
-      if (error) {
-        statusEl.textContent = error.message;
-        statusEl.classList.add('auth-status-error');
+        if (error) {
+          statusEl.textContent = error.message;
+          statusEl.classList.add('auth-status-error');
+        } else if (data.session) {
+          window.location.href = 'dashboard.html';
+        } else {
+          statusEl.textContent = `Check ${email} to confirm your account, then sign in.`;
+          statusEl.classList.add('auth-status-success');
+          form.reset();
+          setMode('signin');
+        }
       } else {
-        statusEl.textContent = `Check ${email} for your sign-in link.`;
-        statusEl.classList.add('auth-status-success');
-        form.reset();
-        toggleButtons[0].classList.add('is-active');
-        toggleButtons[1].classList.remove('is-active');
-        accountTypeInput.value = 'participant';
+        submitBtn.textContent = 'Signing in...';
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+
+        if (error) {
+          statusEl.textContent = error.message;
+          statusEl.classList.add('auth-status-error');
+        } else {
+          window.location.href = 'dashboard.html';
+        }
       }
     });
   </script>

@@ -26,48 +26,61 @@
   <main class="auth-page topo-bg">
     <div class="container">
       <div class="auth-card">
-        <div class="auth-toggle" role="tablist" aria-label="Sign in or create account">
-          <button type="button" class="toggle-btn is-active" id="mode-signin" role="tab" aria-selected="true">
-            Sign In
-          </button>
-          <button type="button" class="toggle-btn" id="mode-signup" role="tab" aria-selected="false">
-            Create Account
-          </button>
-        </div>
 
-        <p class="eyebrow center" id="auth-eyebrow">Welcome Back</p>
-        <h1 class="auth-title" id="auth-title">Sign in to Crew</h1>
-        <p class="auth-sub" id="auth-sub">
-          Enter your email and password to get to your dashboard.
-        </p>
-
-        <form id="auth-form" class="auth-form">
-          <div class="auth-toggle" id="account-type-toggle" role="radiogroup" aria-label="Account type" hidden>
-            <button type="button" class="toggle-btn is-active" data-value="participant">
-              Runner / Crew
+        <div id="auth-form-wrap">
+          <div class="auth-toggle" role="tablist" aria-label="Sign in or create account" id="mode-toggle">
+            <button type="button" class="toggle-btn is-active" id="mode-signin" role="tab" aria-selected="true">
+              Sign In
             </button>
-            <button type="button" class="toggle-btn" data-value="race_director">
-              Race Director
+            <button type="button" class="toggle-btn" id="mode-signup" role="tab" aria-selected="false">
+              Create Account
             </button>
           </div>
-          <input type="hidden" id="account-type" value="participant" />
 
-          <label class="auth-label full-name-el" for="full-name">Full name</label>
-          <input class="auth-input full-name-el" type="text" id="full-name" name="full-name" placeholder="Jane Runner" autocomplete="name" />
+          <p class="eyebrow center" id="auth-eyebrow">Welcome Back</p>
+          <h1 class="auth-title" id="auth-title">Sign in to Crew</h1>
+          <p class="auth-sub" id="auth-sub">
+            Enter your email and password to get to your dashboard.
+          </p>
 
-          <label class="auth-label" for="email">Email</label>
-          <input class="auth-input" type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+          <form id="auth-form" class="auth-form">
+            <div class="auth-toggle" id="account-type-toggle" role="radiogroup" aria-label="Account type" hidden>
+              <button type="button" class="toggle-btn is-active" data-value="participant">
+                Runner / Crew
+              </button>
+              <button type="button" class="toggle-btn" data-value="race_director">
+                Race Director
+              </button>
+            </div>
+            <input type="hidden" id="account-type" value="participant" />
 
-          <label class="auth-label" for="password">Password</label>
-          <input class="auth-input" type="password" id="password" name="password" placeholder="At least 6 characters" autocomplete="current-password" required minlength="6" />
+            <label class="auth-label full-name-el" for="full-name">Full name</label>
+            <input class="auth-input full-name-el" type="text" id="full-name" name="full-name" placeholder="Jane Runner" autocomplete="name" />
 
-          <button type="submit" class="btn btn-primary auth-submit" id="submit-btn">
-            Sign In
-          </button>
+            <label class="auth-label" for="email">Email</label>
+            <input class="auth-input" type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
 
-          <p class="auth-status" id="auth-status" aria-live="polite"></p>
+            <label class="auth-label password-el" for="password">Password</label>
+            <input class="auth-input password-el" type="password" id="password" name="password" placeholder="At least 6 characters" autocomplete="current-password" minlength="6" />
+
+            <button type="submit" class="btn btn-primary auth-submit" id="submit-btn">
+              Sign In
+            </button>
+
+            <p class="auth-status" id="auth-status" aria-live="polite"></p>
+          </form>
+
           <p class="field-hint" id="forgot-password-link"><a href="#" id="forgot-password">Forgot password?</a></p>
-        </form>
+          <p class="field-hint" id="back-to-signin-link" hidden><a href="#" id="back-to-signin">&larr; Back to Sign In</a></p>
+        </div>
+
+        <div id="email-sent-screen" hidden>
+          <p class="eyebrow center">Check Your Inbox</p>
+          <h1 class="auth-title" id="sent-title">Check your email</h1>
+          <p class="auth-sub" id="sent-message"></p>
+          <button type="button" class="btn btn-primary auth-submit" id="sent-back-btn">Back to Sign In</button>
+        </div>
+
       </div>
     </div>
   </main>
@@ -90,8 +103,14 @@
       window.location.href = 'dashboard.html';
     }
 
-    const dashboardUrl = window.location.origin + window.location.pathname.replace('login.html', 'dashboard.html');
+    const show = (el) => { el.hidden = false; el.style.display = ''; };
+    const hide = (el) => { el.hidden = true; el.style.display = 'none'; };
 
+    const dashboardUrl = window.location.origin + window.location.pathname.replace('login.html', 'dashboard.html');
+    const resetPasswordUrl = window.location.origin + window.location.pathname.replace('login.html', 'reset-password.html');
+
+    const authFormWrap = document.getElementById('auth-form-wrap');
+    const modeToggle = document.getElementById('mode-toggle');
     const modeSignIn = document.getElementById('mode-signin');
     const modeSignUp = document.getElementById('mode-signup');
     const accountTypeToggle = document.getElementById('account-type-toggle');
@@ -99,6 +118,8 @@
     const accountTypeInput = document.getElementById('account-type');
     const fullNameEls = document.querySelectorAll('.full-name-el');
     const fullNameInput = document.getElementById('full-name');
+    const emailInput = document.getElementById('email');
+    const passwordEls = document.querySelectorAll('.password-el');
     const passwordInput = document.getElementById('password');
     const eyebrow = document.getElementById('auth-eyebrow');
     const title = document.getElementById('auth-title');
@@ -106,6 +127,10 @@
     const submitBtn = document.getElementById('submit-btn');
     const statusEl = document.getElementById('auth-status');
     const forgotLinkWrap = document.getElementById('forgot-password-link');
+    const backToSigninLink = document.getElementById('back-to-signin-link');
+    const emailSentScreen = document.getElementById('email-sent-screen');
+    const sentTitle = document.getElementById('sent-title');
+    const sentMessage = document.getElementById('sent-message');
 
     let mode = 'signin';
 
@@ -114,27 +139,45 @@
       statusEl.textContent = '';
       statusEl.className = 'auth-status';
 
-      const show = (el) => { el.hidden = false; el.style.display = ''; };
-      const hide = (el) => { el.hidden = true; el.style.display = 'none'; };
-
       if (mode === 'signup') {
+        show(modeToggle);
+        hide(backToSigninLink);
         modeSignUp.classList.add('is-active');
         modeSignIn.classList.remove('is-active');
         show(accountTypeToggle);
         fullNameEls.forEach(show);
         fullNameInput.required = true;
+        passwordEls.forEach(show);
+        passwordInput.required = true;
         passwordInput.autocomplete = 'new-password';
         eyebrow.textContent = 'Get Started';
         title.textContent = 'Create your account';
         sub.textContent = "You'll get a confirmation email once — after that, just sign in with your password.";
         submitBtn.textContent = 'Create Account';
         hide(forgotLinkWrap);
+      } else if (mode === 'forgot') {
+        hide(modeToggle);
+        show(backToSigninLink);
+        hide(accountTypeToggle);
+        fullNameEls.forEach(hide);
+        fullNameInput.required = false;
+        passwordEls.forEach(hide);
+        passwordInput.required = false;
+        eyebrow.textContent = 'Reset Password';
+        title.textContent = 'Forgot your password?';
+        sub.textContent = "Enter your email and we'll send you a link to reset it.";
+        submitBtn.textContent = 'Send Reset Link';
+        hide(forgotLinkWrap);
       } else {
+        show(modeToggle);
+        hide(backToSigninLink);
         modeSignIn.classList.add('is-active');
         modeSignUp.classList.remove('is-active');
         hide(accountTypeToggle);
         fullNameEls.forEach(hide);
         fullNameInput.required = false;
+        passwordEls.forEach(show);
+        passwordInput.required = true;
         passwordInput.autocomplete = 'current-password';
         eyebrow.textContent = 'Welcome Back';
         title.textContent = 'Sign in to Crew';
@@ -144,8 +187,27 @@
       }
     }
 
+    function showEmailSent(titleText, messageText) {
+      hide(authFormWrap);
+      sentTitle.textContent = titleText;
+      sentMessage.textContent = messageText;
+      show(emailSentScreen);
+    }
+
+    function backToForm() {
+      hide(emailSentScreen);
+      show(authFormWrap);
+      form.reset();
+      setMode('signin');
+    }
+
     modeSignIn.addEventListener('click', () => setMode('signin'));
     modeSignUp.addEventListener('click', () => setMode('signup'));
+    document.getElementById('back-to-signin').addEventListener('click', (e) => {
+      e.preventDefault();
+      setMode('signin');
+    });
+    document.getElementById('sent-back-btn').addEventListener('click', backToForm);
     setMode('signin');
 
     accountTypeButtons.forEach((btn) => {
@@ -156,24 +218,40 @@
       });
     });
 
-    document.getElementById('forgot-password').addEventListener('click', async (e) => {
+    document.getElementById('forgot-password').addEventListener('click', (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      if (!email) {
-        statusEl.textContent = 'Enter your email above first, then click "Forgot password?"';
-        statusEl.className = 'auth-status auth-status-error';
-        return;
-      }
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: dashboardUrl });
-      statusEl.textContent = error ? error.message : `Password reset link sent to ${email}.`;
-      statusEl.className = 'auth-status ' + (error ? 'auth-status-error' : 'auth-status-success');
+      setMode('forgot');
     });
 
     const form = document.getElementById('auth-form');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value.trim();
+      const email = emailInput.value.trim();
+
+      if (mode === 'forgot') {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+        statusEl.textContent = '';
+        statusEl.className = 'auth-status';
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: resetPasswordUrl });
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Reset Link';
+
+        if (error) {
+          statusEl.textContent = error.message;
+          statusEl.classList.add('auth-status-error');
+        } else {
+          showEmailSent(
+            'Check your email',
+            `We sent a password reset link to ${email}. Click the link in that email to set a new password, then come back and sign in.`
+          );
+        }
+        return;
+      }
+
       const password = passwordInput.value;
 
       submitBtn.disabled = true;
@@ -203,10 +281,10 @@
         } else if (data.session) {
           window.location.href = 'dashboard.html';
         } else {
-          statusEl.textContent = `Check ${email} to confirm your account, then sign in.`;
-          statusEl.classList.add('auth-status-success');
-          form.reset();
-          setMode('signin');
+          showEmailSent(
+            'Confirm your email',
+            `We sent a confirmation link to ${email}. Click it to activate your account, then come back and sign in.`
+          );
         }
       } else {
         submitBtn.textContent = 'Signing in...';
@@ -223,6 +301,12 @@
         }
       }
     });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset') === 'success') {
+      statusEl.textContent = 'Password updated! Sign in with your new password.';
+      statusEl.classList.add('auth-status-success');
+    }
   </script>
 
 </body>

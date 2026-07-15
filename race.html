@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Race — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="race-page">
+    <div class="container">
+      <p class="auth-status" id="loading-status">Loading race...</p>
+
+      <div id="race-content" hidden>
+        <p class="eyebrow" id="race-location"></p>
+        <h1 id="race-name" class="race-heading"></h1>
+        <p class="race-date" id="race-date"></p>
+
+        <div class="stat-row">
+          <div class="stat-pill">
+            <span class="stat-value" id="stat-distance">&mdash;</span>
+            <span class="stat-label">Miles</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value" id="stat-gain">&mdash;</span>
+            <span class="stat-label">Elevation Gain (ft)</span>
+          </div>
+          <div class="stat-pill">
+            <span class="stat-value" id="stat-loss">&mdash;</span>
+            <span class="stat-label">Elevation Loss (ft)</span>
+          </div>
+        </div>
+
+        <div id="map" class="race-map"></div>
+
+        <h2 class="elevation-heading">Elevation Profile</h2>
+        <div class="elevation-chart">
+          <svg id="elevation-svg" viewBox="0 0 1000 220" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </span>
+      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const raceId = params.get('id');
+    const loadingStatus = document.getElementById('loading-status');
+
+    if (!raceId) {
+      loadingStatus.textContent = 'No race specified.';
+    } else {
+      const { data: race, error: raceError } = await supabase
+        .from('races')
+        .select('name, race_date, location, total_distance_miles, elevation_gain_ft, elevation_loss_ft')
+        .eq('id', raceId)
+        .single();
+
+      const { data: track, error: trackError } = await supabase
+        .from('race_tracks')
+        .select('points')
+        .eq('race_id', raceId)
+        .single();
+
+      if (raceError || trackError || !race || !track) {
+        loadingStatus.textContent = 'Could not load this race.';
+      } else {
+        loadingStatus.hidden = true;
+        document.getElementById('race-content').hidden = false;
+
+        document.getElementById('race-name').textContent = race.name;
+        document.getElementById('race-location').textContent = race.location || 'Course Overview';
+        document.getElementById('race-date').textContent = race.race_date
+          ? new Date(race.race_date + 'T00:00:00').toLocaleDateString(undefined, {
+              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            })
+          : '';
+        document.getElementById('stat-distance').textContent = race.total_distance_miles ?? '—';
+        document.getElementById('stat-gain').textContent = race.elevation_gain_ft ?? '—';
+        document.getElementById('stat-loss').textContent = race.elevation_loss_ft ?? '—';
+
+        const points = track.points;
+        const latLngs = points.map((p) => [p[0], p[1]]);
+
+        const map = L.map('map', { scrollWheelZoom: false });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 17,
+        }).addTo(map);
+
+        const polyline = L.polyline(latLngs, { color: '#E0632B', weight: 4 }).addTo(map);
+        map.fitBounds(polyline.getBounds(), { padding: [24, 24] });
+
+        L.circleMarker(latLngs[0], { radius: 7, color: '#1F4D3B', fillColor: '#1F4D3B', fillOpacity: 1 })
+          .addTo(map).bindTooltip('Start');
+        L.circleMarker(latLngs[latLngs.length - 1], { radius: 7, color: '#E0632B', fillColor: '#E0632B', fillOpacity: 1 })
+          .addTo(map).bindTooltip('Finish');
+
+        const svg = document.getElementById('elevation-svg');
+        const elevations = points.map((p) => p[2]).filter((e) => e !== null);
+        const distances = points.map((p) => p[3]);
+
+        if (elevations.length > 1) {
+          const minEle = Math.min(...elevations);
+          const maxEle = Math.max(...elevations);
+          const maxDist = distances[distances.length - 1] || 1;
+          const eleRange = maxEle - minEle || 1;
+
+          const pathPoints = points
+            .map((p) => {
+              const x = (p[3] / maxDist) * 1000;
+              const y = p[2] === null ? null : 210 - ((p[2] - minEle) / eleRange) * 190;
+              return y === null ? null : `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .filter(Boolean)
+            .join(' ');
+
+          const fillPoints = `0,210 ${pathPoints} 1000,210`;
+
+          svg.innerHTML = `
+            <polygon points="${fillPoints}" fill="rgba(224,99,43,0.15)" />
+            <polyline points="${pathPoints}" fill="none" stroke="#E0632B" stroke-width="3" />
+          `;
+        }
+      }
+    }
+  </script>
+
+</body>
+</html>

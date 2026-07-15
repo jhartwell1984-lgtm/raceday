@@ -21,7 +21,7 @@
     </div>
   </header>
 
-  <main class="auth-page topo-bg">
+  <main class="dashboard-page topo-bg">
     <div class="container">
       <div class="auth-card dashboard-card" id="dashboard-card" hidden>
         <p class="eyebrow center" id="account-type-label">Participant</p>
@@ -29,8 +29,14 @@
         <p class="auth-sub" id="dashboard-sub">
           This is the start of your Crew dashboard. More is on the way.
         </p>
+        <a href="race-new.html" class="btn btn-primary auth-submit">Create a Race</a>
       </div>
       <p class="auth-status" id="loading-status">Loading your dashboard...</p>
+
+      <div class="race-grid" id="race-grid" hidden>
+        <h2 class="races-heading">Your Races</h2>
+        <div class="race-cards" id="race-cards"></div>
+      </div>
     </div>
   </main>
 
@@ -76,6 +82,29 @@
 
         loadingStatus.hidden = true;
         dashboardCard.hidden = false;
+
+        const { data: races } = await supabase
+          .from('races')
+          .select('id, name, race_date, location, total_distance_miles')
+          .eq('created_by', session.user.id)
+          .order('race_date', { ascending: true });
+
+        if (races && races.length > 0) {
+          const escapeHtml = (str) =>
+            String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+          const raceCards = document.getElementById('race-cards');
+          raceCards.innerHTML = races
+            .map((race) => `
+              <a class="race-card" href="race.html?id=${encodeURIComponent(race.id)}">
+                <span class="mock-tag">${race.race_date ? new Date(race.race_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}</span>
+                <span class="mock-title">${escapeHtml(race.name)}</span>
+                <span class="mock-meta">${escapeHtml(race.location)}${race.total_distance_miles ? ` &middot; ${race.total_distance_miles} mi` : ''}</span>
+              </a>
+            `)
+            .join('');
+          document.getElementById('race-grid').hidden = false;
+        }
       }
     }
 

@@ -46,6 +46,23 @@
           </div>
         </div>
 
+        <div class="pace-planning-card">
+          <h2 class="elevation-heading">Race Pace Planning</h2>
+          <p class="auth-sub">Set your start time and goal finish time to estimate when you'll reach each aid station.</p>
+          <form id="pacing-form" class="pacing-form">
+            <div class="pacing-field">
+              <label class="auth-label" for="start-time-input">Start Time</label>
+              <input class="auth-input" type="datetime-local" id="start-time-input" />
+            </div>
+            <div class="pacing-field">
+              <label class="auth-label" for="goal-hours-input">Goal Finish (hours)</label>
+              <input class="auth-input" type="number" id="goal-hours-input" step="0.5" min="1" placeholder="e.g. 34" />
+            </div>
+            <button type="submit" class="btn btn-primary auth-submit pacing-save-btn" id="pacing-save-btn">Save</button>
+          </form>
+          <p class="auth-status" id="pacing-status"></p>
+        </div>
+
         <div id="map" class="race-map"></div>
         <div class="map-legend">
           <span class="legend-item"><span class="legend-dot legend-dot-crew"></span> Aid / Crew Access</span>
@@ -97,9 +114,9 @@
     if (!raceId) {
       loadingStatus.textContent = 'No race specified.';
     } else {
-      const { data: race, error: raceError } = await supabase
+      let { data: race, error: raceError } = await supabase
         .from('races')
-        .select('name, race_date, location, total_distance_miles, elevation_gain_ft, elevation_loss_ft')
+        .select('name, race_date, location, total_distance_miles, elevation_gain_ft, elevation_loss_ft, start_time, goal_finish_hours')
         .eq('id', raceId)
         .single();
 
@@ -111,7 +128,7 @@
 
       const { data: aidStations } = await supabase
         .from('aid_stations')
-        .select('name, mile_marker, lat, lon, has_drop_bag, has_crew_access, cutoff_time, notes')
+        .select('id, name, mile_marker, lat, lon, has_drop_bag, has_crew_access, cutoff_time, notes')
         .eq('race_id', raceId)
         .order('mile_marker', { ascending: true });
 
@@ -152,20 +169,124 @@
         const stations = aidStations || [];
         const listEl = document.getElementById('aid-station-list');
 
-        if (stations.length === 0) {
-          listEl.innerHTML = '<p class="auth-sub">No aid stations added yet.</p>';
-        } else {
-          stations.forEach((station, i) => {
-            const markerColor = station.has_crew_access ? '#1F4D3B' : '#C4501E';
-            if (station.lat != null && station.lon != null) {
-              const tooltipParts = [`${escapeHtml(station.name)} — mile ${station.mile_marker}`];
-              if (station.has_crew_access) tooltipParts.push('Crew Access');
-              if (station.has_drop_bag) tooltipParts.push('Drop Bag');
-              L.circleMarker([station.lat, station.lon], {
-                radius: 7, color: markerColor, weight: 2, fillColor: markerColor, fillOpacity: 1,
-              }).addTo(map).bindTooltip(tooltipParts.join(' · '));
-            }
+        function computeArrival(mileMarker) {
+          if (!race.start_time || !race.goal_finish_hours || !race.total_distance_miles) return null;
+          const fraction = mileMarker / race.total_distance_miles;
+          const hoursIn = fraction * race.goal_finish_hours;
+          return new Date(new Date(race.start_time).getTime() + hoursIn * 3600 * 1000);
+        }
 
+        function formatArrival(date) {
+          if (!date) return null;
+          return date.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        }
+
+        const dropBagStationIds = stations.filter((s) => s.has_drop_bag).map((s) => s.id);
+        const dropBagItemsByStation = new Map();
+
+        if (dropBagStationIds.length > 0) {
+          const { data: items } = await supabase
+            .from('drop_bag_items')
+            .select('id, aid_station_id, item, is_packed')
+            .eq('user_id', session.user.id)
+            .in('aid_station_id', dropBagStationIds)
+            .order('created_at', { ascending: true });
+
+          (items || []).forEach((item) => {
+            if (!dropBagItemsByStation.has(item.aid_station_id)) {
+              dropBagItemsByStation.set(item.aid_station_id, []);
+            }
+            dropBagItemsByStation.get(item.aid_station_id).push(item);
+          });
+        }
+
+        function buildDropBagItemRow(item, list) {
+          const li = document.createElement('li');
+          li.className = 'drop-bag-item';
+          if (item.is_packed) li.classList.add('is-packed');
+
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = item.is_packed;
+          checkbox.addEventListener('change', async () => {
+            await supabase.from('drop_bag_items').update({ is_packed: checkbox.checked }).eq('id', item.id);
+            li.classList.toggle('is-packed', checkbox.checked);
+          });
+          const span = document.createElement('span');
+          span.textContent = item.item;
+          label.append(checkbox, span);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'drop-bag-remove';
+          removeBtn.textContent = '×';
+          removeBtn.setAttribute('aria-label', `Remove ${item.item}`);
+          removeBtn.addEventListener('click', async () => {
+            await supabase.from('drop_bag_items').delete().eq('id', item.id);
+            li.remove();
+          });
+
+          li.append(label, removeBtn);
+          return li;
+        }
+
+        function buildDropBagPanel(station) {
+          const panel = document.createElement('div');
+          panel.className = 'drop-bag-panel';
+
+          const heading = document.createElement('p');
+          heading.className = 'drop-bag-heading';
+          heading.textContent = 'Drop Bag Checklist';
+          panel.appendChild(heading);
+
+          const list = document.createElement('ul');
+          list.className = 'drop-bag-items';
+          (dropBagItemsByStation.get(station.id) || []).forEach((item) => {
+            list.appendChild(buildDropBagItemRow(item, list));
+          });
+          panel.appendChild(list);
+
+          const form = document.createElement('form');
+          form.className = 'drop-bag-add-form';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Add item…';
+          input.className = 'drop-bag-input';
+          const addBtn = document.createElement('button');
+          addBtn.type = 'submit';
+          addBtn.className = 'drop-bag-add-btn';
+          addBtn.textContent = 'Add';
+          form.append(input, addBtn);
+
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+            const { data, error } = await supabase
+              .from('drop_bag_items')
+              .insert({ aid_station_id: station.id, user_id: session.user.id, item: text })
+              .select()
+              .single();
+            if (!error && data) {
+              input.value = '';
+              list.appendChild(buildDropBagItemRow(data, list));
+            }
+          });
+          panel.appendChild(form);
+
+          return panel;
+        }
+
+        function renderStationList() {
+          listEl.innerHTML = '';
+
+          if (stations.length === 0) {
+            listEl.innerHTML = '<p class="auth-sub">No aid stations added yet.</p>';
+            return;
+          }
+
+          stations.forEach((station, i) => {
             const nextMarker = i < stations.length - 1
               ? stations[i + 1].mile_marker
               : race.total_distance_miles;
@@ -213,7 +334,18 @@
               b.textContent = `Cutoff ${station.cutoff_time}`;
               badgesEl.appendChild(b);
             }
+            const arrival = formatArrival(computeArrival(station.mile_marker));
+            if (arrival) {
+              const b = document.createElement('span');
+              b.className = 'aid-badge aid-badge-arrival';
+              b.textContent = `Est. Arrival ${arrival}`;
+              badgesEl.appendChild(b);
+            }
             nameWrap.appendChild(badgesEl);
+
+            if (station.has_drop_bag) {
+              nameWrap.appendChild(buildDropBagPanel(station));
+            }
 
             const gapEl = document.createElement('span');
             gapEl.className = 'aid-station-gap';
@@ -223,6 +355,64 @@
             listEl.appendChild(row);
           });
         }
+
+        stations.forEach((station) => {
+          const markerColor = station.has_crew_access ? '#1F4D3B' : '#C4501E';
+          if (station.lat != null && station.lon != null) {
+            const tooltipParts = [`${escapeHtml(station.name)} — mile ${station.mile_marker}`];
+            if (station.has_crew_access) tooltipParts.push('Crew Access');
+            if (station.has_drop_bag) tooltipParts.push('Drop Bag');
+            L.circleMarker([station.lat, station.lon], {
+              radius: 7, color: markerColor, weight: 2, fillColor: markerColor, fillOpacity: 1,
+            }).addTo(map).bindTooltip(tooltipParts.join(' · '));
+          }
+        });
+
+        renderStationList();
+
+        const startTimeInput = document.getElementById('start-time-input');
+        const goalHoursInput = document.getElementById('goal-hours-input');
+        const pacingStatus = document.getElementById('pacing-status');
+
+        const toDatetimeLocalValue = (isoString) => {
+          const d = new Date(isoString);
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+
+        if (race.start_time) startTimeInput.value = toDatetimeLocalValue(race.start_time);
+        if (race.goal_finish_hours) goalHoursInput.value = race.goal_finish_hours;
+
+        document.getElementById('pacing-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const saveBtn = document.getElementById('pacing-save-btn');
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+          pacingStatus.textContent = '';
+          pacingStatus.className = 'auth-status';
+
+          const newStartTime = startTimeInput.value ? new Date(startTimeInput.value).toISOString() : null;
+          const newGoalHours = goalHoursInput.value ? parseFloat(goalHoursInput.value) : null;
+
+          const { error } = await supabase
+            .from('races')
+            .update({ start_time: newStartTime, goal_finish_hours: newGoalHours })
+            .eq('id', raceId);
+
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save';
+
+          if (error) {
+            pacingStatus.textContent = error.message;
+            pacingStatus.classList.add('auth-status-error');
+          } else {
+            race.start_time = newStartTime;
+            race.goal_finish_hours = newGoalHours;
+            pacingStatus.textContent = 'Saved. Estimated arrival times updated below.';
+            pacingStatus.classList.add('auth-status-success');
+            renderStationList();
+          }
+        });
 
         const svg = document.getElementById('elevation-svg');
         const elevations = points.map((p) => p[2]).filter((e) => e !== null);

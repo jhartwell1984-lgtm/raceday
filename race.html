@@ -47,6 +47,10 @@
         </div>
 
         <div id="map" class="race-map"></div>
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot legend-dot-crew"></span> Aid / Crew Access</span>
+          <span class="legend-item"><span class="legend-dot legend-dot-aid"></span> Aid Station Only</span>
+        </div>
 
         <h2 class="elevation-heading">Aid Stations</h2>
         <div class="aid-station-list" id="aid-station-list"></div>
@@ -107,7 +111,7 @@
 
       const { data: aidStations } = await supabase
         .from('aid_stations')
-        .select('name, mile_marker, lat, lon')
+        .select('name, mile_marker, lat, lon, has_drop_bag, has_crew_access, cutoff_time, notes')
         .eq('race_id', raceId)
         .order('mile_marker', { ascending: true });
 
@@ -152,10 +156,14 @@
           listEl.innerHTML = '<p class="auth-sub">No aid stations added yet.</p>';
         } else {
           stations.forEach((station, i) => {
+            const markerColor = station.has_crew_access ? '#1F4D3B' : '#C4501E';
             if (station.lat != null && station.lon != null) {
+              const tooltipParts = [`${escapeHtml(station.name)} — mile ${station.mile_marker}`];
+              if (station.has_crew_access) tooltipParts.push('Crew Access');
+              if (station.has_drop_bag) tooltipParts.push('Drop Bag');
               L.circleMarker([station.lat, station.lon], {
-                radius: 6, color: '#1F4D3B', weight: 2, fillColor: '#fff', fillOpacity: 1,
-              }).addTo(map).bindTooltip(`${escapeHtml(station.name)} — mile ${station.mile_marker}`);
+                radius: 7, color: markerColor, weight: 2, fillColor: markerColor, fillOpacity: 1,
+              }).addTo(map).bindTooltip(tooltipParts.join(' · '));
             }
 
             const nextMarker = i < stations.length - 1
@@ -170,15 +178,48 @@
             mileEl.className = 'aid-station-mile';
             mileEl.textContent = station.mile_marker;
 
+            const nameWrap = document.createElement('span');
+            nameWrap.className = 'aid-station-name-wrap';
+
             const nameEl = document.createElement('span');
             nameEl.className = 'aid-station-name';
             nameEl.textContent = station.name;
+            nameWrap.appendChild(nameEl);
+
+            if (station.notes) {
+              const notesEl = document.createElement('span');
+              notesEl.className = 'aid-station-notes';
+              notesEl.textContent = station.notes;
+              nameWrap.appendChild(notesEl);
+            }
+
+            const badgesEl = document.createElement('span');
+            badgesEl.className = 'aid-station-badges';
+            if (station.has_crew_access) {
+              const b = document.createElement('span');
+              b.className = 'aid-badge aid-badge-crew';
+              b.textContent = 'Crew Access';
+              badgesEl.appendChild(b);
+            }
+            if (station.has_drop_bag) {
+              const b = document.createElement('span');
+              b.className = 'aid-badge aid-badge-dropbag';
+              b.textContent = 'Drop Bag';
+              badgesEl.appendChild(b);
+            }
+            if (station.cutoff_time) {
+              const b = document.createElement('span');
+              b.className = 'aid-badge aid-badge-cutoff';
+              b.textContent = `Cutoff ${station.cutoff_time}`;
+              badgesEl.appendChild(b);
+            }
+            nameWrap.appendChild(badgesEl);
 
             const gapEl = document.createElement('span');
             gapEl.className = 'aid-station-gap';
             gapEl.textContent = gap != null ? `${gap} mi to next` : '';
 
-            row.append(mileEl, nameEl, gapEl);
+            row.append(mileEl, nameWrap, gapEl);
             listEl.appendChild(row);
           });
         }

@@ -32,6 +32,14 @@
         <h1 id="race-name" class="race-heading"></h1>
         <p class="race-date" id="race-date"></p>
 
+        <section class="crew-section">
+          <div class="crew-section-header">
+            <h2 class="elevation-heading">Crew</h2>
+            <button type="button" class="btn btn-primary btn-nav" id="add-crew-btn" hidden>+ Add Crew Member</button>
+          </div>
+          <div id="crew-content"></div>
+        </section>
+
         <div class="stat-row">
           <div class="stat-pill">
             <span class="stat-value" id="stat-distance">&mdash;</span>
@@ -79,6 +87,54 @@
         </div>
       </div>
     </div>
+
+    <div class="modal-overlay" id="crew-modal-overlay" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="crew-modal-title">Add Crew Member</h3>
+          <button type="button" class="modal-close" id="crew-modal-close" aria-label="Close">&times;</button>
+        </div>
+        <form id="crew-form" class="auth-form">
+          <div class="crew-photo-row">
+            <div class="crew-photo-preview-wrap">
+              <img id="crew-photo-preview" class="crew-photo-preview" hidden alt="" />
+              <span id="crew-photo-placeholder" class="crew-photo-placeholder">?</span>
+            </div>
+            <input type="file" id="crew-photo-input" accept="image/*" class="crew-photo-input" />
+          </div>
+
+          <label class="auth-label" for="crew-name-input">Name</label>
+          <input class="auth-input" type="text" id="crew-name-input" required />
+
+          <label class="auth-label" for="crew-role-input">Role</label>
+          <select class="auth-input" id="crew-role-input">
+            <option value="captain">Race Captain</option>
+            <option value="pacer">Pacer</option>
+            <option value="crew">Crew</option>
+          </select>
+
+          <div id="crew-station-field" hidden>
+            <label class="auth-label" for="crew-station-input">Meets At Aid Station</label>
+            <select class="auth-input" id="crew-station-input"></select>
+          </div>
+
+          <label class="auth-label" for="crew-phone-input">Phone</label>
+          <input class="auth-input" type="tel" id="crew-phone-input" placeholder="(555) 555-5555" />
+
+          <label class="auth-label" for="crew-email-input">Email</label>
+          <input class="auth-input" type="email" id="crew-email-input" placeholder="name@example.com" />
+
+          <label class="auth-label" for="crew-bio-input">Short Bio</label>
+          <textarea class="auth-input crew-textarea" id="crew-bio-input" rows="3" placeholder="A sentence or two about them"></textarea>
+
+          <label class="auth-label" for="crew-tasks-input">Tasks / Instructions</label>
+          <textarea class="auth-input crew-textarea" id="crew-tasks-input" rows="3" placeholder="What they're responsible for on race day"></textarea>
+
+          <button type="submit" class="btn btn-primary auth-submit" id="crew-save-btn">Save Crew Member</button>
+          <p class="auth-status" id="crew-form-status"></p>
+        </form>
+      </div>
+    </div>
   </main>
 
   <footer class="site-footer">
@@ -117,7 +173,7 @@
     } else {
       let { data: race, error: raceError } = await supabase
         .from('races')
-        .select('name, race_date, location, total_distance_miles, elevation_gain_ft, elevation_loss_ft, start_time, goal_finish_hours')
+        .select('name, race_date, location, total_distance_miles, elevation_gain_ft, elevation_loss_ft, start_time, goal_finish_hours, created_by')
         .eq('id', raceId)
         .single();
 
@@ -169,6 +225,344 @@
 
         const stations = aidStations || [];
         const listEl = document.getElementById('aid-station-list');
+
+        const isOwner = session.user.id === race.created_by;
+        if (isOwner) {
+          const addCrewBtn = document.getElementById('add-crew-btn');
+          addCrewBtn.hidden = false;
+          addCrewBtn.style.display = '';
+        }
+
+        const { data: crewMembers } = await supabase
+          .from('crew_members')
+          .select('id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, aid_stations(name, mile_marker)')
+          .eq('race_id', raceId)
+          .order('order_index', { ascending: true });
+
+        let crew = crewMembers || [];
+
+        const crewContentEl = document.getElementById('crew-content');
+        const crewModalOverlay = document.getElementById('crew-modal-overlay');
+        const crewModalTitle = document.getElementById('crew-modal-title');
+        const crewForm = document.getElementById('crew-form');
+        const crewFormStatus = document.getElementById('crew-form-status');
+        const crewSaveBtn = document.getElementById('crew-save-btn');
+        const crewNameInput = document.getElementById('crew-name-input');
+        const crewRoleInput = document.getElementById('crew-role-input');
+        const crewStationField = document.getElementById('crew-station-field');
+        const crewStationInput = document.getElementById('crew-station-input');
+        const crewPhoneInput = document.getElementById('crew-phone-input');
+        const crewEmailInput = document.getElementById('crew-email-input');
+        const crewBioInput = document.getElementById('crew-bio-input');
+        const crewTasksInput = document.getElementById('crew-tasks-input');
+        const crewPhotoInput = document.getElementById('crew-photo-input');
+        const crewPhotoPreview = document.getElementById('crew-photo-preview');
+        const crewPhotoPlaceholder = document.getElementById('crew-photo-placeholder');
+
+        let editingCrewId = null;
+        let selectedPhotoFile = null;
+        let existingPhotoUrl = null;
+
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '';
+        noneOpt.textContent = 'Not assigned yet';
+        crewStationInput.appendChild(noneOpt);
+        stations.forEach((s) => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (mile ${s.mile_marker})`;
+          crewStationInput.appendChild(opt);
+        });
+
+        function initials(name) {
+          return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+        }
+
+        function roleLabel(role) {
+          return role === 'captain' ? 'Race Captain' : role === 'pacer' ? 'Pacer' : 'Crew';
+        }
+
+        function buildCrewCard(member, isCaptain) {
+          const card = document.createElement('div');
+          card.className = isCaptain ? 'crew-captain-card' : 'crew-card';
+
+          if (member.photo_url) {
+            const img = document.createElement('img');
+            img.className = 'crew-photo';
+            img.src = member.photo_url;
+            img.alt = member.name;
+            card.appendChild(img);
+          } else {
+            const placeholder = document.createElement('span');
+            placeholder.className = 'crew-avatar-placeholder';
+            placeholder.textContent = initials(member.name);
+            card.appendChild(placeholder);
+          }
+
+          const body = document.createElement('div');
+          body.className = 'crew-card-body';
+
+          const nameRow = document.createElement('div');
+          nameRow.className = 'crew-name-row';
+          const nameEl = document.createElement('span');
+          nameEl.className = 'crew-name';
+          nameEl.textContent = member.name;
+          const roleBadge = document.createElement('span');
+          roleBadge.className = `crew-role-badge role-${member.role}`;
+          roleBadge.textContent = roleLabel(member.role);
+          nameRow.append(nameEl, roleBadge);
+          body.appendChild(nameRow);
+
+          if (member.role === 'pacer' && member.aid_stations) {
+            const stationNote = document.createElement('p');
+            stationNote.className = 'crew-station-note';
+            stationNote.textContent = `Meets at ${member.aid_stations.name} (mile ${member.aid_stations.mile_marker})`;
+            body.appendChild(stationNote);
+          }
+
+          if (member.phone || member.email) {
+            const contact = document.createElement('div');
+            contact.className = 'crew-contact';
+            if (member.phone) {
+              const a = document.createElement('a');
+              a.href = `tel:${member.phone}`;
+              a.textContent = member.phone;
+              contact.appendChild(a);
+            }
+            if (member.email) {
+              const a = document.createElement('a');
+              a.href = `mailto:${member.email}`;
+              a.textContent = member.email;
+              contact.appendChild(a);
+            }
+            body.appendChild(contact);
+          }
+
+          if (member.bio) {
+            const bio = document.createElement('p');
+            bio.className = 'crew-bio';
+            bio.textContent = member.bio;
+            body.appendChild(bio);
+          }
+
+          if (member.tasks) {
+            const tasks = document.createElement('p');
+            tasks.className = 'crew-tasks';
+            const label = document.createElement('span');
+            label.className = 'crew-tasks-label';
+            label.textContent = 'Tasks: ';
+            tasks.appendChild(label);
+            tasks.appendChild(document.createTextNode(member.tasks));
+            body.appendChild(tasks);
+          }
+
+          if (isOwner) {
+            const actions = document.createElement('div');
+            actions.className = 'crew-card-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => openCrewModal(member));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'crew-delete-btn';
+            deleteBtn.textContent = 'Remove';
+            deleteBtn.addEventListener('click', async () => {
+              if (!confirm(`Remove ${member.name} from the crew?`)) return;
+              await supabase.from('crew_members').delete().eq('id', member.id);
+              crew = crew.filter((m) => m.id !== member.id);
+              renderCrew();
+            });
+
+            actions.append(editBtn, deleteBtn);
+            body.appendChild(actions);
+          }
+
+          card.appendChild(body);
+          return card;
+        }
+
+        function renderCrew() {
+          crewContentEl.innerHTML = '';
+
+          if (crew.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'auth-sub';
+            empty.textContent = isOwner
+              ? 'No crew added yet. Add your Race Captain, pacers, and crew to get everyone on the same page.'
+              : 'No crew added yet.';
+            crewContentEl.appendChild(empty);
+            return;
+          }
+
+          const captains = crew.filter((m) => m.role === 'captain');
+          const pacers = crew.filter((m) => m.role === 'pacer');
+          const support = crew.filter((m) => m.role === 'crew');
+
+          captains.forEach((m) => crewContentEl.appendChild(buildCrewCard(m, true)));
+
+          if (pacers.length > 0) {
+            const heading = document.createElement('p');
+            heading.className = 'crew-subheading';
+            heading.textContent = 'Pacers';
+            crewContentEl.appendChild(heading);
+            const grid = document.createElement('div');
+            grid.className = 'crew-grid';
+            pacers.forEach((m) => grid.appendChild(buildCrewCard(m, false)));
+            crewContentEl.appendChild(grid);
+          }
+
+          if (support.length > 0) {
+            const heading = document.createElement('p');
+            heading.className = 'crew-subheading';
+            heading.textContent = 'Crew';
+            crewContentEl.appendChild(heading);
+            const grid = document.createElement('div');
+            grid.className = 'crew-grid';
+            support.forEach((m) => grid.appendChild(buildCrewCard(m, false)));
+            crewContentEl.appendChild(grid);
+          }
+        }
+
+        function resetCrewForm() {
+          editingCrewId = null;
+          selectedPhotoFile = null;
+          existingPhotoUrl = null;
+          crewForm.reset();
+          crewRoleInput.value = 'crew';
+          crewStationField.hidden = true;
+          crewStationField.style.display = 'none';
+          crewPhotoPreview.hidden = true;
+          crewPhotoPreview.style.display = 'none';
+          crewPhotoPlaceholder.style.display = 'flex';
+          crewFormStatus.textContent = '';
+          crewFormStatus.className = 'auth-status';
+        }
+
+        function openCrewModal(member) {
+          resetCrewForm();
+          if (member) {
+            editingCrewId = member.id;
+            existingPhotoUrl = member.photo_url;
+            crewModalTitle.textContent = 'Edit Crew Member';
+            crewNameInput.value = member.name;
+            crewRoleInput.value = member.role;
+            crewPhoneInput.value = member.phone || '';
+            crewEmailInput.value = member.email || '';
+            crewBioInput.value = member.bio || '';
+            crewTasksInput.value = member.tasks || '';
+            if (member.role === 'pacer') {
+              crewStationField.hidden = false;
+              crewStationField.style.display = '';
+              crewStationInput.value = member.aid_station_id || '';
+            }
+            if (member.photo_url) {
+              crewPhotoPreview.src = member.photo_url;
+              crewPhotoPreview.hidden = false;
+              crewPhotoPreview.style.display = 'block';
+              crewPhotoPlaceholder.style.display = 'none';
+            }
+          } else {
+            crewModalTitle.textContent = 'Add Crew Member';
+          }
+          crewModalOverlay.hidden = false;
+          crewModalOverlay.style.display = 'flex';
+        }
+
+        function closeCrewModal() {
+          crewModalOverlay.hidden = true;
+          crewModalOverlay.style.display = 'none';
+        }
+
+        document.getElementById('add-crew-btn').addEventListener('click', () => openCrewModal(null));
+        document.getElementById('crew-modal-close').addEventListener('click', closeCrewModal);
+        crewModalOverlay.addEventListener('click', (e) => {
+          if (e.target === crewModalOverlay) closeCrewModal();
+        });
+
+        crewRoleInput.addEventListener('change', () => {
+          const isPacer = crewRoleInput.value === 'pacer';
+          crewStationField.hidden = !isPacer;
+          crewStationField.style.display = isPacer ? '' : 'none';
+        });
+
+        crewPhotoInput.addEventListener('change', () => {
+          const file = crewPhotoInput.files[0];
+          if (!file) return;
+          selectedPhotoFile = file;
+          const reader = new FileReader();
+          reader.onload = () => {
+            crewPhotoPreview.src = reader.result;
+            crewPhotoPreview.hidden = false;
+            crewPhotoPreview.style.display = 'block';
+            crewPhotoPlaceholder.style.display = 'none';
+          };
+          reader.readAsDataURL(file);
+        });
+
+        crewForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          crewSaveBtn.disabled = true;
+          crewSaveBtn.textContent = 'Saving...';
+          crewFormStatus.textContent = '';
+          crewFormStatus.className = 'auth-status';
+
+          let photoUrl = existingPhotoUrl;
+
+          if (selectedPhotoFile) {
+            const path = `${session.user.id}/${crypto.randomUUID()}-${selectedPhotoFile.name}`;
+            const { error: uploadError } = await supabase.storage.from('crew-photos').upload(path, selectedPhotoFile);
+            if (uploadError) {
+              crewFormStatus.textContent = uploadError.message;
+              crewFormStatus.classList.add('auth-status-error');
+              crewSaveBtn.disabled = false;
+              crewSaveBtn.textContent = 'Save Crew Member';
+              return;
+            }
+            photoUrl = supabase.storage.from('crew-photos').getPublicUrl(path).data.publicUrl;
+          }
+
+          const role = crewRoleInput.value;
+          const payload = {
+            race_id: raceId,
+            name: crewNameInput.value.trim(),
+            role,
+            photo_url: photoUrl,
+            bio: crewBioInput.value.trim() || null,
+            phone: crewPhoneInput.value.trim() || null,
+            email: crewEmailInput.value.trim() || null,
+            tasks: crewTasksInput.value.trim() || null,
+            aid_station_id: role === 'pacer' && crewStationInput.value ? crewStationInput.value : null,
+            created_by: session.user.id,
+          };
+
+          const selectFields = 'id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, aid_stations(name, mile_marker)';
+          const result = editingCrewId
+            ? await supabase.from('crew_members').update(payload).eq('id', editingCrewId).select(selectFields).single()
+            : await supabase.from('crew_members').insert(payload).select(selectFields).single();
+
+          crewSaveBtn.disabled = false;
+          crewSaveBtn.textContent = 'Save Crew Member';
+
+          if (result.error) {
+            crewFormStatus.textContent = result.error.message;
+            crewFormStatus.classList.add('auth-status-error');
+            return;
+          }
+
+          if (editingCrewId) {
+            crew = crew.map((m) => (m.id === editingCrewId ? result.data : m));
+          } else {
+            crew.push(result.data);
+          }
+
+          closeCrewModal();
+          renderCrew();
+        });
+
+        renderCrew();
 
         function computeArrival(mileMarker) {
           if (!race.start_time || !race.goal_finish_hours || !race.total_distance_miles) return null;

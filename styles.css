@@ -1033,6 +1033,281 @@ h2.center {
   font-size: 0.92rem;
 }
 
+/* Crew */
+
+.crew-section {
+  margin-bottom: 40px;
+}
+
+.crew-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.crew-section-header .elevation-heading {
+  margin-bottom: 0;
+}
+
+.crew-subheading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-soft);
+  margin: 24px 0 12px 0;
+}
+
+.crew-subheading:first-child {
+  margin-top: 0;
+}
+
+.crew-captain-card {
+  display: flex;
+  gap: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 24px;
+}
+
+.crew-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.crew-card {
+  display: flex;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+.crew-photo,
+.crew-avatar-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.crew-captain-card .crew-photo,
+.crew-captain-card .crew-avatar-placeholder {
+  width: 88px;
+  height: 88px;
+}
+
+.crew-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-forest);
+  color: #fff;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.crew-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.crew-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.crew-name {
+  font-family: Georgia, serif;
+  font-weight: 700;
+  color: var(--color-forest-dark);
+  font-size: 1.05rem;
+}
+
+.crew-role-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(224, 99, 43, 0.12);
+  color: var(--color-ember-dark);
+}
+
+.crew-role-badge.role-captain {
+  background: var(--color-forest);
+  color: #fff;
+}
+
+.crew-station-note {
+  font-size: 0.85rem;
+  color: var(--color-forest);
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.crew-contact {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.crew-contact a {
+  color: var(--color-ink-soft);
+  text-decoration: none;
+}
+
+.crew-contact a:hover {
+  color: var(--color-forest);
+  text-decoration: underline;
+}
+
+.crew-bio,
+.crew-tasks {
+  font-size: 0.88rem;
+  margin: 0 0 8px 0;
+}
+
+.crew-tasks-label {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.crew-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.crew-card-actions button {
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.crew-card-actions button:hover {
+  color: var(--color-forest);
+}
+
+.crew-card-actions .crew-delete-btn:hover {
+  color: var(--color-ember-dark);
+}
+
+/* Modal */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 30, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 28px 32px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  font-family: Georgia, serif;
+  color: var(--color-forest-dark);
+  margin: 0;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  padding: 0;
+}
+
+.crew-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.crew-photo-preview-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+.crew-photo-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.crew-photo-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-forest);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.crew-photo-input {
+  font-size: 0.85rem;
+}
+
+.crew-textarea {
+  resize: vertical;
+  font-family: inherit;
+  min-height: 60px;
+}
+
 /* Responsive */
 
 @media (max-width: 860px) {
@@ -1063,6 +1338,10 @@ h2.center {
 
   .gear-columns {
     grid-template-columns: 1fr;
+  }
+
+  .crew-captain-card {
+    flex-direction: column;
   }
 }
 

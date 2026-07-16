@@ -966,6 +966,73 @@ h2.center {
   background: var(--color-forest-dark);
 }
 
+.drop-bag-pick-form {
+  margin-bottom: 10px;
+}
+
+.drop-bag-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+}
+
+.drop-bag-cat-select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--color-surface);
+}
+
+/* Gear & Nutrition page */
+
+.gear-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 40px;
+}
+
+.gear-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 24px 28px;
+}
+
+.gear-add-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.gear-add-form .auth-input {
+  flex: 1;
+}
+
+.gear-list {
+  list-style: none;
+  margin: 16px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gear-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+
 /* Responsive */
 
 @media (max-width: 860px) {
@@ -992,6 +1059,10 @@ h2.center {
 
   .mock-card {
     width: 90%;
+  }
+
+  .gear-columns {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Gear &amp; Nutrition — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="race-page">
+    <div class="container">
+      <h1 class="race-heading">My Gear &amp; Nutrition</h1>
+      <p class="auth-sub">
+        Build your personal packing list once, then pull items straight into any aid station drop bag.
+      </p>
+
+      <div class="gear-columns">
+        <section class="gear-section">
+          <h2 class="elevation-heading">Gear</h2>
+          <form class="gear-add-form" id="gear-add-form">
+            <input class="auth-input" type="text" id="gear-input" placeholder="e.g. Headlamp" />
+            <button type="submit" class="drop-bag-add-btn">Add</button>
+          </form>
+          <p class="field-hint" id="gear-status"></p>
+          <ul class="gear-list" id="gear-list"></ul>
+        </section>
+
+        <section class="gear-section">
+          <h2 class="elevation-heading">Nutrition</h2>
+          <form class="gear-add-form" id="nutrition-add-form">
+            <input class="auth-input" type="text" id="nutrition-input" placeholder="e.g. Gu Energy Gel" />
+            <button type="submit" class="drop-bag-add-btn">Add</button>
+          </form>
+          <p class="field-hint" id="nutrition-status"></p>
+          <ul class="gear-list" id="nutrition-list"></ul>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </span>
+      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    function buildItemRow(item, listEl) {
+      const li = document.createElement('li');
+      li.className = 'gear-item';
+
+      const span = document.createElement('span');
+      span.textContent = item.name;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'drop-bag-remove';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', `Remove ${item.name}`);
+      removeBtn.addEventListener('click', async () => {
+        if (!confirm(`Remove "${item.name}" from your list? This also removes it from any drop bags using it.`)) return;
+        await supabase.from('user_items').delete().eq('id', item.id);
+        li.remove();
+      });
+
+      li.append(span, removeBtn);
+      listEl.appendChild(li);
+    }
+
+    function wireCategory(category, formId, inputId, statusId, listId) {
+      const form = document.getElementById(formId);
+      const input = document.getElementById(inputId);
+      const status = document.getElementById(statusId);
+      const listEl = document.getElementById(listId);
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = input.value.trim();
+        if (!name) return;
+
+        status.textContent = '';
+        status.className = 'field-hint';
+
+        const { data, error } = await supabase
+          .from('user_items')
+          .insert({ user_id: session.user.id, category, name })
+          .select()
+          .single();
+
+        if (error) {
+          status.textContent = error.code === '23505' ? 'Already on your list.' : error.message;
+          status.classList.add('field-hint-error');
+        } else {
+          input.value = '';
+          buildItemRow(data, listEl);
+        }
+      });
+    }
+
+    wireCategory('gear', 'gear-add-form', 'gear-input', 'gear-status', 'gear-list');
+    wireCategory('nutrition', 'nutrition-add-form', 'nutrition-input', 'nutrition-status', 'nutrition-list');
+
+    const { data: items } = await supabase
+      .from('user_items')
+      .select('id, category, name')
+      .eq('user_id', session.user.id)
+      .order('name', { ascending: true });
+
+    (items || []).forEach((item) => {
+      const listEl = document.getElementById(item.category === 'gear' ? 'gear-list' : 'nutrition-list');
+      buildItemRow(item, listEl);
+    });
+  </script>
+
+</body>
+</html>

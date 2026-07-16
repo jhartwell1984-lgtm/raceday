@@ -17,6 +17,7 @@
       </a>
       <nav class="nav">
         <a href="dashboard.html">Dashboard</a>
+        <a href="gear.html">My Gear</a>
       </nav>
       <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
     </div>
@@ -183,47 +184,59 @@
 
         const dropBagStationIds = stations.filter((s) => s.has_drop_bag).map((s) => s.id);
         const dropBagItemsByStation = new Map();
+        let userItems = [];
 
         if (dropBagStationIds.length > 0) {
-          const { data: items } = await supabase
+          const { data: catalogItems } = await supabase
+            .from('user_items')
+            .select('id, category, name')
+            .eq('user_id', session.user.id)
+            .order('name', { ascending: true });
+          userItems = catalogItems || [];
+
+          const { data: bagItems } = await supabase
             .from('drop_bag_items')
-            .select('id, aid_station_id, item, is_packed')
+            .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category)')
             .eq('user_id', session.user.id)
             .in('aid_station_id', dropBagStationIds)
             .order('created_at', { ascending: true });
 
-          (items || []).forEach((item) => {
-            if (!dropBagItemsByStation.has(item.aid_station_id)) {
-              dropBagItemsByStation.set(item.aid_station_id, []);
+          (bagItems || []).forEach((entry) => {
+            if (!dropBagItemsByStation.has(entry.aid_station_id)) {
+              dropBagItemsByStation.set(entry.aid_station_id, []);
             }
-            dropBagItemsByStation.get(item.aid_station_id).push(item);
+            dropBagItemsByStation.get(entry.aid_station_id).push(entry);
           });
         }
 
-        function buildDropBagItemRow(item, list) {
+        function buildDropBagItemRow(entry) {
           const li = document.createElement('li');
           li.className = 'drop-bag-item';
-          if (item.is_packed) li.classList.add('is-packed');
+          if (entry.is_packed) li.classList.add('is-packed');
 
           const label = document.createElement('label');
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = item.is_packed;
+          checkbox.checked = entry.is_packed;
           checkbox.addEventListener('change', async () => {
-            await supabase.from('drop_bag_items').update({ is_packed: checkbox.checked }).eq('id', item.id);
+            await supabase.from('drop_bag_items').update({ is_packed: checkbox.checked }).eq('id', entry.id);
+            entry.is_packed = checkbox.checked;
             li.classList.toggle('is-packed', checkbox.checked);
           });
           const span = document.createElement('span');
-          span.textContent = item.item;
+          span.textContent = entry.user_items.name;
           label.append(checkbox, span);
 
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'drop-bag-remove';
           removeBtn.textContent = '×';
-          removeBtn.setAttribute('aria-label', `Remove ${item.item}`);
+          removeBtn.setAttribute('aria-label', `Remove ${entry.user_items.name}`);
           removeBtn.addEventListener('click', async () => {
-            await supabase.from('drop_bag_items').delete().eq('id', item.id);
+            await supabase.from('drop_bag_items').delete().eq('id', entry.id);
+            const stationItems = dropBagItemsByStation.get(entry.aid_station_id) || [];
+            const idx = stationItems.findIndex((e) => e.id === entry.id);
+            if (idx > -1) stationItems.splice(idx, 1);
             li.remove();
           });
 
@@ -242,38 +255,120 @@
 
           const list = document.createElement('ul');
           list.className = 'drop-bag-items';
-          (dropBagItemsByStation.get(station.id) || []).forEach((item) => {
-            list.appendChild(buildDropBagItemRow(item, list));
+          (dropBagItemsByStation.get(station.id) || []).forEach((entry) => {
+            list.appendChild(buildDropBagItemRow(entry));
           });
           panel.appendChild(list);
 
-          const form = document.createElement('form');
-          form.className = 'drop-bag-add-form';
+          async function addToBag(userItem) {
+            const { data, error } = await supabase
+              .from('drop_bag_items')
+              .insert({ aid_station_id: station.id, user_id: session.user.id, user_item_id: userItem.id })
+              .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category)')
+              .single();
+            if (!error && data) {
+              if (!dropBagItemsByStation.has(station.id)) dropBagItemsByStation.set(station.id, []);
+              dropBagItemsByStation.get(station.id).push(data);
+              list.appendChild(buildDropBagItemRow(data));
+            }
+            return error;
+          }
+
+          const pickForm = document.createElement('div');
+          pickForm.className = 'drop-bag-pick-form';
+
+          const select = document.createElement('select');
+          select.className = 'auth-input drop-bag-select';
+
+          function refreshSelectOptions() {
+            const inBag = new Set((dropBagItemsByStation.get(station.id) || []).map((e) => e.user_item_id));
+            const available = userItems.filter((it) => !inBag.has(it.id));
+            select.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = available.length ? 'Add from your list…' : 'No saved items left to add';
+            select.appendChild(placeholder);
+
+            ['gear', 'nutrition'].forEach((cat) => {
+              const inCat = available.filter((it) => it.category === cat);
+              if (inCat.length === 0) return;
+              const group = document.createElement('optgroup');
+              group.label = cat === 'gear' ? 'Gear' : 'Nutrition';
+              inCat.forEach((it) => {
+                const opt = document.createElement('option');
+                opt.value = it.id;
+                opt.textContent = it.name;
+                group.appendChild(opt);
+              });
+              select.appendChild(group);
+            });
+          }
+
+          refreshSelectOptions();
+
+          select.addEventListener('change', async () => {
+            const chosenId = select.value;
+            if (!chosenId) return;
+            const userItem = userItems.find((it) => it.id === chosenId);
+            if (userItem) {
+              await addToBag(userItem);
+              refreshSelectOptions();
+            }
+          });
+          pickForm.appendChild(select);
+          panel.appendChild(pickForm);
+
+          const newItemForm = document.createElement('form');
+          newItemForm.className = 'drop-bag-add-form';
+
+          const catSelect = document.createElement('select');
+          catSelect.className = 'drop-bag-cat-select';
+          [['gear', 'Gear'], ['nutrition', 'Nutrition']].forEach(([val, label]) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = label;
+            catSelect.appendChild(opt);
+          });
+
           const input = document.createElement('input');
           input.type = 'text';
-          input.placeholder = 'Add item…';
+          input.placeholder = 'New item name…';
           input.className = 'drop-bag-input';
+
           const addBtn = document.createElement('button');
           addBtn.type = 'submit';
           addBtn.className = 'drop-bag-add-btn';
-          addBtn.textContent = 'Add';
-          form.append(input, addBtn);
+          addBtn.textContent = 'Add New';
 
-          form.addEventListener('submit', async (e) => {
+          newItemForm.append(catSelect, input, addBtn);
+
+          newItemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const text = input.value.trim();
-            if (!text) return;
-            const { data, error } = await supabase
-              .from('drop_bag_items')
-              .insert({ aid_station_id: station.id, user_id: session.user.id, item: text })
-              .select()
-              .single();
-            if (!error && data) {
-              input.value = '';
-              list.appendChild(buildDropBagItemRow(data, list));
+            const name = input.value.trim();
+            if (!name) return;
+            const category = catSelect.value;
+
+            let userItem = userItems.find((it) => it.category === category && it.name.toLowerCase() === name.toLowerCase());
+
+            if (!userItem) {
+              const { data, error } = await supabase
+                .from('user_items')
+                .insert({ user_id: session.user.id, category, name })
+                .select()
+                .single();
+              if (error) return;
+              userItem = data;
+              userItems.push(userItem);
             }
+
+            const alreadyInBag = (dropBagItemsByStation.get(station.id) || []).some((e) => e.user_item_id === userItem.id);
+            if (!alreadyInBag) {
+              await addToBag(userItem);
+              refreshSelectOptions();
+            }
+            input.value = '';
           });
-          panel.appendChild(form);
+          panel.appendChild(newItemForm);
 
           return panel;
         }

@@ -81,35 +81,117 @@
       const li = document.createElement('li');
       li.className = 'gear-item';
 
-      const textWrap = document.createElement('span');
-      textWrap.className = 'gear-item-text';
+      function renderDisplay() {
+        li.innerHTML = '';
 
-      const span = document.createElement('span');
-      span.textContent = item.name;
-      textWrap.appendChild(span);
+        const textWrap = document.createElement('span');
+        textWrap.className = 'gear-item-text';
 
-      if (item.category === 'nutrition' && (item.calories || item.carbs)) {
-        const macros = document.createElement('span');
-        macros.className = 'gear-item-macros';
-        const parts = [];
-        if (item.calories) parts.push(`${item.calories} cal`);
-        if (item.carbs) parts.push(`${item.carbs}g carbs`);
-        macros.textContent = parts.join(' · ');
-        textWrap.appendChild(macros);
+        const span = document.createElement('span');
+        span.textContent = item.name;
+        textWrap.appendChild(span);
+
+        if (item.category === 'nutrition') {
+          const macros = document.createElement('span');
+          macros.className = 'gear-item-macros';
+          const parts = [];
+          if (item.calories) parts.push(`${item.calories} cal`);
+          if (item.carbs) parts.push(`${item.carbs}g carbs`);
+          macros.textContent = parts.length ? parts.join(' · ') : 'No calories/carbs set';
+          textWrap.appendChild(macros);
+        }
+
+        const actions = document.createElement('span');
+        actions.className = 'gear-item-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'crew-invite-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', renderEdit);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'drop-bag-remove';
+        removeBtn.textContent = '×';
+        removeBtn.setAttribute('aria-label', `Remove ${item.name}`);
+        removeBtn.addEventListener('click', async () => {
+          if (!confirm(`Remove "${item.name}" from your list? This also removes it from any drop bags using it.`)) return;
+          await supabase.from('user_items').delete().eq('id', item.id);
+          li.remove();
+        });
+
+        actions.append(editBtn, removeBtn);
+        li.append(textWrap, actions);
       }
 
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'drop-bag-remove';
-      removeBtn.textContent = '×';
-      removeBtn.setAttribute('aria-label', `Remove ${item.name}`);
-      removeBtn.addEventListener('click', async () => {
-        if (!confirm(`Remove "${item.name}" from your list? This also removes it from any drop bags using it.`)) return;
-        await supabase.from('user_items').delete().eq('id', item.id);
-        li.remove();
-      });
+      function renderEdit() {
+        li.innerHTML = '';
+        li.classList.add('gear-item-editing');
 
-      li.append(textWrap, removeBtn);
+        const editWrap = document.createElement('div');
+        editWrap.className = 'gear-item-edit-wrap';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'auth-input';
+        nameInput.value = item.name;
+        editWrap.appendChild(nameInput);
+
+        let caloriesInput = null;
+        let carbsInput = null;
+        if (item.category === 'nutrition') {
+          caloriesInput = document.createElement('input');
+          caloriesInput.type = 'number';
+          caloriesInput.min = '0';
+          caloriesInput.placeholder = 'Cal';
+          caloriesInput.className = 'auth-input nutrition-macro-input';
+          caloriesInput.value = item.calories ?? '';
+
+          carbsInput = document.createElement('input');
+          carbsInput.type = 'number';
+          carbsInput.min = '0';
+          carbsInput.placeholder = 'Carbs (g)';
+          carbsInput.className = 'auth-input nutrition-macro-input';
+          carbsInput.value = item.carbs ?? '';
+
+          editWrap.append(caloriesInput, carbsInput);
+        }
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'drop-bag-add-btn';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', async () => {
+          const updates = { name: nameInput.value.trim() || item.name };
+          if (item.category === 'nutrition') {
+            updates.calories = caloriesInput.value ? parseFloat(caloriesInput.value) : null;
+            updates.carbs = carbsInput.value ? parseFloat(carbsInput.value) : null;
+          }
+          const { data, error } = await supabase.from('user_items').update(updates).eq('id', item.id).select().single();
+          if (!error && data) {
+            item.name = data.name;
+            item.calories = data.calories;
+            item.carbs = data.carbs;
+            li.classList.remove('gear-item-editing');
+            renderDisplay();
+          }
+        });
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'crew-invite-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', () => {
+          li.classList.remove('gear-item-editing');
+          renderDisplay();
+        });
+
+        editWrap.append(saveBtn, cancelBtn);
+        li.appendChild(editWrap);
+      }
+
+      renderDisplay();
       listEl.appendChild(li);
     }
 

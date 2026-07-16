@@ -665,7 +665,7 @@
 
           const { data: bagItems } = await supabase
             .from('drop_bag_items')
-            .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category, calories, carbs)')
+            .select('id, aid_station_id, user_item_id, is_packed, quantity, user_items(name, category, calories, carbs)')
             .eq('user_id', session.user.id)
             .in('aid_station_id', dropBagStationIds)
             .order('created_at', { ascending: true });
@@ -696,6 +696,20 @@
           span.textContent = entry.user_items.name;
           label.append(checkbox, span);
 
+          const qtyInput = document.createElement('input');
+          qtyInput.type = 'number';
+          qtyInput.min = '1';
+          qtyInput.className = 'drop-bag-qty-input';
+          qtyInput.value = entry.quantity || 1;
+          qtyInput.setAttribute('aria-label', `Quantity of ${entry.user_items.name}`);
+          qtyInput.addEventListener('change', async () => {
+            const newQty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+            qtyInput.value = newQty;
+            await supabase.from('drop_bag_items').update({ quantity: newQty }).eq('id', entry.id);
+            entry.quantity = newQty;
+            if (onChange) onChange();
+          });
+
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'drop-bag-remove';
@@ -710,7 +724,7 @@
             if (onChange) onChange();
           });
 
-          li.append(label, removeBtn);
+          li.append(label, qtyInput, removeBtn);
           return li;
         }
 
@@ -747,8 +761,9 @@
             let packedCalories = 0;
             items.forEach((entry) => {
               if (entry.user_items.category === 'nutrition') {
-                packedCarbs += Number(entry.user_items.carbs) || 0;
-                packedCalories += Number(entry.user_items.calories) || 0;
+                const qty = entry.quantity || 1;
+                packedCarbs += (Number(entry.user_items.carbs) || 0) * qty;
+                packedCalories += (Number(entry.user_items.calories) || 0) * qty;
               }
             });
 
@@ -774,11 +789,11 @@
           refreshNutritionSummary();
           panel.appendChild(nutritionSummary);
 
-          async function addToBag(userItem) {
+          async function addToBag(userItem, quantity) {
             const { data, error } = await supabase
               .from('drop_bag_items')
-              .insert({ aid_station_id: station.id, user_id: session.user.id, user_item_id: userItem.id })
-              .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category, calories, carbs)')
+              .insert({ aid_station_id: station.id, user_id: session.user.id, user_item_id: userItem.id, quantity: quantity || 1 })
+              .select('id, aid_station_id, user_item_id, is_packed, quantity, user_items(name, category, calories, carbs)')
               .single();
             if (!error && data) {
               if (!dropBagItemsByStation.has(station.id)) dropBagItemsByStation.set(station.id, []);
@@ -850,6 +865,13 @@
           input.placeholder = 'New item name…';
           input.className = 'drop-bag-input';
 
+          const newItemQtyInput = document.createElement('input');
+          newItemQtyInput.type = 'number';
+          newItemQtyInput.min = '1';
+          newItemQtyInput.value = '1';
+          newItemQtyInput.placeholder = 'Qty';
+          newItemQtyInput.className = 'drop-bag-input nutrition-macro-input';
+
           const caloriesInput = document.createElement('input');
           caloriesInput.type = 'number';
           caloriesInput.min = '0';
@@ -881,7 +903,7 @@
           addBtn.className = 'drop-bag-add-btn';
           addBtn.textContent = 'Add New';
 
-          newItemForm.append(catSelect, input, caloriesInput, carbsInput, addBtn);
+          newItemForm.append(catSelect, input, newItemQtyInput, caloriesInput, carbsInput, addBtn);
 
           newItemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -909,10 +931,12 @@
 
             const alreadyInBag = (dropBagItemsByStation.get(station.id) || []).some((e) => e.user_item_id === userItem.id);
             if (!alreadyInBag) {
-              await addToBag(userItem);
+              const qty = Math.max(1, parseInt(newItemQtyInput.value, 10) || 1);
+              await addToBag(userItem, qty);
               refreshSelectOptions();
             }
             input.value = '';
+            newItemQtyInput.value = '1';
             caloriesInput.value = '';
             carbsInput.value = '';
           });

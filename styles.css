@@ -915,6 +915,19 @@ h2.center {
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.drop-bag-qty-input {
+  width: 48px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--color-surface);
 }
 
 .drop-bag-item.is-packed span {
@@ -1076,6 +1089,35 @@ h2.center {
 .gear-item-macros {
   font-size: 0.78rem;
   color: var(--color-ink-soft);
+}
+
+.gear-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.gear-item-editing {
+  align-items: center;
+}
+
+.gear-item-edit-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+
+.gear-item-edit-wrap .auth-input {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.gear-item-edit-wrap input[type="text"] {
+  flex: 1;
+  min-width: 120px;
 }
 
 .nutrition-add-form {

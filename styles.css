@@ -1211,6 +1211,53 @@ h2.center {
   color: var(--color-ember-dark);
 }
 
+.crew-invite-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.crew-invite-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.crew-invite-badge.invite-not_sent {
+  background: var(--color-bg);
+  color: var(--color-ink-soft);
+  border: 1px solid var(--color-border);
+}
+
+.crew-invite-badge.invite-invited {
+  background: rgba(224, 99, 43, 0.12);
+  color: var(--color-ember-dark);
+}
+
+.crew-invite-badge.invite-linked {
+  background: rgba(31, 77, 59, 0.12);
+  color: var(--color-forest);
+}
+
+.crew-invite-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-forest);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.crew-invite-btn:hover {
+  color: var(--color-forest-dark);
+}
+
 /* Modal */
 
 .modal-overlay {

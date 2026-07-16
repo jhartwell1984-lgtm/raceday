@@ -235,7 +235,7 @@
 
         const { data: crewMembers } = await supabase
           .from('crew_members')
-          .select('id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, aid_stations(name, mile_marker)')
+          .select('id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, invite_status, user_id, aid_stations(name, mile_marker)')
           .eq('race_id', raceId)
           .order('order_index', { ascending: true });
 
@@ -336,6 +336,46 @@
               contact.appendChild(a);
             }
             body.appendChild(contact);
+          }
+
+          if (member.email) {
+            const inviteRow = document.createElement('div');
+            inviteRow.className = 'crew-invite-row';
+
+            const statusBadge = document.createElement('span');
+            statusBadge.className = `crew-invite-badge invite-${member.invite_status || 'not_sent'}`;
+            statusBadge.textContent = member.invite_status === 'linked'
+              ? 'Linked to Account'
+              : member.invite_status === 'invited'
+                ? 'Invite Sent'
+                : 'Not Invited';
+            inviteRow.appendChild(statusBadge);
+
+            if (isOwner) {
+              const inviteBtn = document.createElement('button');
+              inviteBtn.type = 'button';
+              inviteBtn.className = 'crew-invite-btn';
+              const idleLabel = member.invite_status === 'not_sent' || !member.invite_status ? 'Send Invite' : 'Resend';
+              inviteBtn.textContent = idleLabel;
+              inviteBtn.addEventListener('click', async () => {
+                inviteBtn.disabled = true;
+                inviteBtn.textContent = 'Sending...';
+                const { data, error } = await supabase.functions.invoke('send-crew-invite', {
+                  body: { crew_member_id: member.id },
+                });
+                if (error) {
+                  alert('Could not send invite: ' + error.message);
+                  inviteBtn.disabled = false;
+                  inviteBtn.textContent = idleLabel;
+                } else {
+                  member.invite_status = data.linked ? 'linked' : 'invited';
+                  renderCrew();
+                }
+              });
+              inviteRow.appendChild(inviteBtn);
+            }
+
+            body.appendChild(inviteRow);
           }
 
           if (member.bio) {
@@ -538,19 +578,32 @@
             created_by: session.user.id,
           };
 
-          const selectFields = 'id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, aid_stations(name, mile_marker)';
+          const selectFields = 'id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, invite_status, user_id, aid_stations(name, mile_marker)';
+          const wasNewMember = !editingCrewId;
           const result = editingCrewId
             ? await supabase.from('crew_members').update(payload).eq('id', editingCrewId).select(selectFields).single()
             : await supabase.from('crew_members').insert(payload).select(selectFields).single();
 
-          crewSaveBtn.disabled = false;
-          crewSaveBtn.textContent = 'Save Crew Member';
-
           if (result.error) {
+            crewSaveBtn.disabled = false;
+            crewSaveBtn.textContent = 'Save Crew Member';
             crewFormStatus.textContent = result.error.message;
             crewFormStatus.classList.add('auth-status-error');
             return;
           }
+
+          if (wasNewMember && result.data.email) {
+            crewSaveBtn.textContent = 'Sending invite...';
+            const { data: inviteData, error: inviteError } = await supabase.functions.invoke('send-crew-invite', {
+              body: { crew_member_id: result.data.id },
+            });
+            if (!inviteError && inviteData) {
+              result.data.invite_status = inviteData.linked ? 'linked' : 'invited';
+            }
+          }
+
+          crewSaveBtn.disabled = false;
+          crewSaveBtn.textContent = 'Save Crew Member';
 
           if (editingCrewId) {
             crew = crew.map((m) => (m.id === editingCrewId ? result.data : m));

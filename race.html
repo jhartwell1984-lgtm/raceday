@@ -738,10 +738,14 @@
           panel.appendChild(heading);
 
           const stationIndex = stations.findIndex((s) => s.id === station.id);
-          const nextStationMarker = stationIndex > -1 && stationIndex < stations.length - 1
-            ? stations[stationIndex + 1].mile_marker
-            : race.total_distance_miles;
-          const segmentMiles = nextStationMarker != null ? nextStationMarker - station.mile_marker : null;
+          let nextRestock = { mile: race.total_distance_miles, name: 'the finish' };
+          for (let i = stationIndex + 1; i < stations.length; i++) {
+            if (stations[i].has_drop_bag || stations[i].has_crew_access) {
+              nextRestock = { mile: stations[i].mile_marker, name: stations[i].name };
+              break;
+            }
+          }
+          const segmentMiles = nextRestock.mile != null ? nextRestock.mile - station.mile_marker : null;
           const effectiveGoalHours = race.goal_finish_hours || DEFAULT_GOAL_FINISH_HOURS;
           const segmentHours = segmentMiles != null && race.total_distance_miles
             ? (segmentMiles / race.total_distance_miles) * effectiveGoalHours
@@ -770,7 +774,7 @@
             const targetLine = document.createElement('p');
             targetLine.className = 'nutrition-target-line';
             const goalNote = race.goal_finish_hours ? '' : ' (using default 33hr goal — set yours above)';
-            targetLine.textContent = `Target for next ${segmentMiles.toFixed(1)} mi (~${segmentHours.toFixed(1)}hr): ${Math.round(targetCarbs)}g carbs · ${Math.round(targetCalories)} cal${goalNote}`;
+            targetLine.textContent = `Target until ${nextRestock.name} (${segmentMiles.toFixed(1)} mi, ~${segmentHours.toFixed(1)}hr): ${Math.round(targetCarbs)}g carbs · ${Math.round(targetCalories)} cal${goalNote}`;
             nutritionSummary.appendChild(targetLine);
 
             const packedLine = document.createElement('p');

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find a Race — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <main class="race-page">
+    <div class="container">
+      <h1 class="race-heading">Find a Race</h1>
+      <p class="auth-sub">
+        Search for a race that's already in RaceDay, or create a new one if it isn't here yet.
+      </p>
+
+      <form id="search-form" class="gear-add-form race-search-form">
+        <input class="auth-input" type="text" id="search-input" placeholder="Search by race name…" autofocus />
+        <button type="submit" class="drop-bag-add-btn">Search</button>
+      </form>
+
+      <p class="auth-sub race-search-or">
+        Can't find it? <a href="race-new.html">Create a new race</a>.
+      </p>
+
+      <div id="search-results" class="search-results"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="logo-group">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </span>
+      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    const { data: myParticipations } = await supabase
+      .from('race_participants')
+      .select('race_id')
+      .eq('user_id', session.user.id);
+
+    const myRaceIds = new Set((myParticipations || []).map((p) => p.race_id));
+
+    const resultsEl = document.getElementById('search-results');
+
+    function renderResults(races) {
+      resultsEl.innerHTML = '';
+
+      if (races.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'auth-sub';
+        empty.textContent = 'No races found.';
+        resultsEl.appendChild(empty);
+        return;
+      }
+
+      races.forEach((race) => {
+        const card = document.createElement('div');
+        card.className = 'search-result-card';
+
+        const info = document.createElement('div');
+        info.className = 'search-result-info';
+
+        const nameEl = document.createElement('span');
+        nameEl.className = 'search-result-name';
+        nameEl.textContent = race.name;
+
+        const metaEl = document.createElement('span');
+        metaEl.className = 'search-result-meta';
+        const metaParts = [];
+        if (race.race_date) {
+          metaParts.push(new Date(race.race_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }));
+        }
+        if (race.location) metaParts.push(race.location);
+        if (race.total_distance_miles) metaParts.push(`${race.total_distance_miles} mi`);
+        metaEl.textContent = metaParts.join(' · ');
+
+        info.append(nameEl, metaEl);
+
+        const actionBtn = document.createElement('a');
+        actionBtn.className = 'btn btn-primary btn-nav';
+
+        if (myRaceIds.has(race.id)) {
+          actionBtn.textContent = 'View My Race';
+          actionBtn.href = `race.html?id=${encodeURIComponent(race.id)}`;
+        } else {
+          actionBtn.textContent = 'Add to My Races';
+          actionBtn.href = '#';
+          actionBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            actionBtn.textContent = 'Adding...';
+            const { error } = await supabase
+              .from('race_participants')
+              .insert({ race_id: race.id, user_id: session.user.id });
+            if (error) {
+              alert('Could not add this race: ' + error.message);
+              actionBtn.textContent = 'Add to My Races';
+            } else {
+              window.location.href = `race.html?id=${encodeURIComponent(race.id)}`;
+            }
+          });
+        }
+
+        card.append(info, actionBtn);
+        resultsEl.appendChild(card);
+      });
+    }
+
+    async function search(term) {
+      let query = supabase
+        .from('races')
+        .select('id, name, race_date, location, total_distance_miles')
+        .order('race_date', { ascending: true })
+        .limit(25);
+
+      if (term) {
+        query = query.ilike('name', `%${term}%`);
+      }
+
+      const { data } = await query;
+      renderResults(data || []);
+    }
+
+    document.getElementById('search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      search(document.getElementById('search-input').value.trim());
+    });
+
+    search('');
+  </script>
+
+</body>
+</html>

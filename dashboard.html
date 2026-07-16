@@ -15,6 +15,7 @@
         <span class="badge">Crew</span>
       </a>
       <nav class="nav">
+        <a href="race-search.html">Find a Race</a>
         <a href="gear.html">My Gear</a>
         <span id="welcome-name"></span>
       </nav>
@@ -30,7 +31,10 @@
         <p class="auth-sub" id="dashboard-sub">
           This is the start of your Crew dashboard. More is on the way.
         </p>
-        <a href="race-new.html" class="btn btn-primary auth-submit">Create a Race</a>
+        <div class="hero-actions dashboard-actions">
+          <a href="race-search.html" class="btn btn-primary">Find a Race</a>
+          <a href="race-new.html" class="btn btn-secondary">Create a Race</a>
+        </div>
       </div>
       <p class="auth-status" id="loading-status">Loading your dashboard...</p>
 
@@ -84,13 +88,17 @@
         loadingStatus.hidden = true;
         dashboardCard.hidden = false;
 
-        const { data: races } = await supabase
-          .from('races')
-          .select('id, name, race_date, location, total_distance_miles')
-          .eq('created_by', session.user.id)
-          .order('race_date', { ascending: true });
+        const { data: participations } = await supabase
+          .from('race_participants')
+          .select('race:races(id, name, race_date, location, total_distance_miles)')
+          .eq('user_id', session.user.id);
 
-        if (races && races.length > 0) {
+        const races = (participations || [])
+          .map((p) => p.race)
+          .filter(Boolean)
+          .sort((a, b) => (a.race_date || '').localeCompare(b.race_date || ''));
+
+        if (races.length > 0) {
           const escapeHtml = (str) =>
             String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

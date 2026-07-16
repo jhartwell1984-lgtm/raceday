@@ -232,6 +232,10 @@ h2.center {
   margin-top: 12px;
 }
 
+.dashboard-actions {
+  justify-content: center;
+}
+
 /* Split sections */
 
 .split {
@@ -1455,6 +1459,71 @@ h2.center {
   resize: vertical;
   font-family: inherit;
   min-height: 60px;
+}
+
+.not-participant-prompt {
+  max-width: 480px;
+  margin: 80px auto;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 40px;
+}
+
+/* Race search */
+
+.race-search-form {
+  max-width: 480px;
+  margin-top: 24px;
+}
+
+.race-search-or {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.race-search-or a {
+  color: var(--color-forest);
+  font-weight: 600;
+}
+
+.search-results {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.search-result-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 18px 22px;
+}
+
+.search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result-name {
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-forest-dark);
+}
+
+.search-result-meta {
+  font-size: 0.85rem;
+  color: var(--color-ink-soft);
 }
 
 /* Responsive */

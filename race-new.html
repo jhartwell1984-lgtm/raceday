@@ -155,6 +155,10 @@
         return;
       }
 
+      await supabase
+        .from('race_participants')
+        .insert({ race_id: race.id, user_id: session.user.id });
+
       window.location.href = `race.html?id=${race.id}`;
     });
   </script>

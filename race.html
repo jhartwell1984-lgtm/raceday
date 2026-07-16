@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
-<body>
+<body class="race-modern">
 
   <div class="app-shell">
     <aside class="app-sidebar">
@@ -37,9 +37,31 @@
       </div>
 
       <div id="race-content" hidden>
-        <p class="eyebrow" id="race-location"></p>
-        <h1 id="race-name" class="race-heading"></h1>
-        <p class="race-date" id="race-date"></p>
+        <header class="rd-hero">
+          <div class="rd-hero-left">
+            <img id="hero-avatar" class="rd-hero-avatar" hidden alt="" />
+            <span id="hero-avatar-placeholder" class="rd-hero-avatar-placeholder">?</span>
+            <div>
+              <p class="rd-hero-eyebrow" id="race-location"></p>
+              <h1 id="race-name" class="rd-hero-title"></h1>
+              <p class="rd-hero-sub" id="race-date"></p>
+            </div>
+          </div>
+          <dl class="rd-hero-stats">
+            <div class="rd-hero-stat">
+              <dt>Distance</dt>
+              <dd id="stat-distance">&mdash;</dd>
+            </div>
+            <div class="rd-hero-stat">
+              <dt>Elev Gain</dt>
+              <dd id="stat-gain">&mdash;</dd>
+            </div>
+            <div class="rd-hero-stat">
+              <dt>Elev Loss</dt>
+              <dd id="stat-loss">&mdash;</dd>
+            </div>
+          </dl>
+        </header>
 
         <section class="crew-section">
           <h2 class="elevation-heading">Runner</h2>
@@ -54,18 +76,26 @@
           <div id="crew-content"></div>
         </section>
 
-        <div class="stat-row">
-          <div class="stat-pill">
-            <span class="stat-value" id="stat-distance">&mdash;</span>
-            <span class="stat-label">Miles</span>
+        <div class="finish-projection-card" id="finish-projection-card" hidden>
+          <h2 class="fp-heading">Goal Finish</h2>
+          <div class="fp-main">
+            <span class="fp-value" id="fp-goal-time">&mdash;</span>
+            <span class="fp-unit">elapsed</span>
           </div>
-          <div class="stat-pill">
-            <span class="stat-value" id="stat-gain">&mdash;</span>
-            <span class="stat-label">Elevation Gain (ft)</span>
-          </div>
-          <div class="stat-pill">
-            <span class="stat-value" id="stat-loss">&mdash;</span>
-            <span class="stat-label">Elevation Loss (ft)</span>
+          <p class="fp-sub" id="fp-sub"></p>
+          <div class="fp-mini-stats">
+            <div class="fp-mini-stat">
+              <span class="fp-mini-label">Start</span>
+              <span class="fp-mini-value" id="fp-start">&mdash;</span>
+            </div>
+            <div class="fp-mini-stat">
+              <span class="fp-mini-label">Goal Pace</span>
+              <span class="fp-mini-value" id="fp-pace">&mdash;</span>
+            </div>
+            <div class="fp-mini-stat">
+              <span class="fp-mini-label">Est. Finish</span>
+              <span class="fp-mini-value" id="fp-finish-clock">&mdash;</span>
+            </div>
           </div>
         </div>
 
@@ -261,6 +291,17 @@
 
         const runnerName = (myProfile && myProfile.full_name) || (myProfile && myProfile.email) || 'You';
         const runnerContentEl = document.getElementById('runner-profile-content');
+
+        const heroAvatarImg = document.getElementById('hero-avatar');
+        const heroAvatarPlaceholder = document.getElementById('hero-avatar-placeholder');
+        if (participant.photo_url) {
+          heroAvatarImg.src = participant.photo_url;
+          heroAvatarImg.hidden = false;
+          heroAvatarImg.style.display = 'block';
+          heroAvatarPlaceholder.style.display = 'none';
+        } else {
+          heroAvatarPlaceholder.textContent = runnerName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+        }
 
         function renderRunnerDisplay() {
           runnerContentEl.innerHTML = '';
@@ -898,6 +939,49 @@
           return new Date(new Date(participant.start_time).getTime() + hoursIn * 3600 * 1000);
         }
 
+        const finishProjectionCard = document.getElementById('finish-projection-card');
+        const fpGoalTimeEl = document.getElementById('fp-goal-time');
+        const fpSubEl = document.getElementById('fp-sub');
+        const fpStartEl = document.getElementById('fp-start');
+        const fpPaceEl = document.getElementById('fp-pace');
+        const fpFinishClockEl = document.getElementById('fp-finish-clock');
+
+        function formatHoursAsElapsed(hours) {
+          const h = Math.floor(hours);
+          const m = Math.round((hours - h) * 60);
+          return `${h}:${String(m).padStart(2, '0')}`;
+        }
+
+        function formatPacePerMile(hours, miles) {
+          const totalMinutes = (hours * 60) / miles;
+          const m = Math.floor(totalMinutes);
+          const s = Math.round((totalMinutes - m) * 60);
+          return `${m}:${String(s).padStart(2, '0')} /mi`;
+        }
+
+        function formatClockTime(date) {
+          return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function refreshFinishProjection() {
+          if (!participant.start_time || !participant.goal_finish_hours || !race.total_distance_miles) {
+            finishProjectionCard.hidden = true;
+            finishProjectionCard.style.display = 'none';
+            return;
+          }
+          finishProjectionCard.hidden = false;
+          finishProjectionCard.style.display = '';
+
+          const startDate = new Date(participant.start_time);
+          const finishDate = new Date(startDate.getTime() + participant.goal_finish_hours * 3600 * 1000);
+
+          fpGoalTimeEl.textContent = formatHoursAsElapsed(participant.goal_finish_hours);
+          fpSubEl.textContent = `Starting ${formatClockTime(startDate)}`;
+          fpStartEl.textContent = formatClockTime(startDate);
+          fpPaceEl.textContent = formatPacePerMile(participant.goal_finish_hours, race.total_distance_miles);
+          fpFinishClockEl.textContent = finishDate.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        }
+
         const CARB_GRAMS_PER_HOUR = 60;
         const CALORIES_PER_HOUR = 250;
         const DEFAULT_GOAL_FINISH_HOURS = 33;
@@ -1268,12 +1352,17 @@
             const row = document.createElement('div');
             row.className = 'aid-station-row';
 
-            const mileEl = document.createElement('span');
-            mileEl.className = 'aid-station-mile';
-            mileEl.textContent = station.mile_marker;
+            const badgeEl = document.createElement('span');
+            badgeEl.className = 'aid-station-badge-num' + (station.has_crew_access ? '' : ' no-crew');
+            badgeEl.textContent = i + 1;
 
             const nameWrap = document.createElement('span');
             nameWrap.className = 'aid-station-name-wrap';
+
+            const mileLabelEl = document.createElement('span');
+            mileLabelEl.className = 'aid-station-mile-label';
+            mileLabelEl.textContent = `Mile ${station.mile_marker}`;
+            nameWrap.appendChild(mileLabelEl);
 
             const nameEl = document.createElement('span');
             nameEl.className = 'aid-station-name';
@@ -1333,24 +1422,29 @@
             gapEl.className = 'aid-station-gap';
             gapEl.textContent = gap != null ? `${gap} mi to next` : '';
 
-            row.append(mileEl, nameWrap, gapEl);
+            row.append(badgeEl, nameWrap, gapEl);
             listEl.appendChild(row);
           });
         }
 
-        stations.forEach((station) => {
-          const markerColor = station.has_crew_access ? '#1F4D3B' : '#C4501E';
+        stations.forEach((station, i) => {
           if (station.lat != null && station.lon != null) {
             const tooltipParts = [`${escapeHtml(station.name)} — mile ${station.mile_marker}`];
             if (station.has_crew_access) tooltipParts.push('Crew Access');
             if (station.has_drop_bag) tooltipParts.push('Drop Bag');
-            L.circleMarker([station.lat, station.lon], {
-              radius: 7, color: markerColor, weight: 2, fillColor: markerColor, fillOpacity: 1,
-            }).addTo(map).bindTooltip(tooltipParts.join(' · '));
+            const icon = L.divIcon({
+              className: 'rd-map-pin',
+              html: `<span class="rd-map-pin-badge${station.has_crew_access ? '' : ' no-crew'}">${i + 1}</span>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            });
+            L.marker([station.lat, station.lon], { icon })
+              .addTo(map).bindTooltip(tooltipParts.join(' · '));
           }
         });
 
         renderStationList();
+        refreshFinishProjection();
 
         const startTimeInput = document.getElementById('start-time-input');
         const goalHoursInput = document.getElementById('goal-hours-input');
@@ -1393,6 +1487,7 @@
             pacingStatus.textContent = 'Saved. Estimated arrival times updated below.';
             pacingStatus.classList.add('auth-status-success');
             renderStationList();
+            refreshFinishProjection();
           }
         });
 

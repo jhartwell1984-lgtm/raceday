@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
   --color-bg: #FAF7F1;
   --color-surface: #FFFFFF;
@@ -7,9 +9,11 @@
   --color-forest-dark: #163A2B;
   --color-ember: #E0632B;
   --color-ember-dark: #C4501E;
+  --color-sage: #7C8A6F;
   --color-border: #E7E1D5;
 
   --radius: 14px;
+  --radius-lg: 16px;
   --max-width: 1120px;
   --shadow-soft: 0 10px 30px -12px rgba(31, 42, 33, 0.18);
   --shadow-card: 0 6px 20px -8px rgba(31, 42, 33, 0.15);
@@ -697,21 +701,31 @@ h2.center {
 .race-map {
   height: 420px;
   width: 100%;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
   margin-bottom: 40px;
 }
 
+.leaflet-div-icon {
+  background: transparent;
+  border: none;
+}
+
 .elevation-heading {
-  font-size: 1.2rem;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-forest-dark);
   margin-bottom: 16px;
 }
 
 .elevation-chart {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 20px;
 }
@@ -725,7 +739,7 @@ h2.center {
 .aid-station-list {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   margin-bottom: 40px;
   overflow: hidden;
@@ -733,7 +747,7 @@ h2.center {
 
 .aid-station-row {
   display: grid;
-  grid-template-columns: 70px 1fr auto;
+  grid-template-columns: 32px 1fr auto;
   align-items: start;
   gap: 16px;
   padding: 16px 24px;
@@ -744,11 +758,34 @@ h2.center {
   border-bottom: none;
 }
 
-.aid-station-mile {
-  font-family: Georgia, serif;
+.aid-station-badge-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-forest);
+  color: #fff;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-weight: 700;
+  font-size: 0.76rem;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-card);
+  flex-shrink: 0;
+}
+
+.aid-station-badge-num.no-crew {
+  background: var(--color-ember-dark);
+}
+
+.aid-station-mile-label {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--color-ember-dark);
-  padding-top: 2px;
 }
 
 .aid-station-name-wrap {
@@ -758,8 +795,10 @@ h2.center {
 }
 
 .aid-station-name {
-  font-weight: 600;
-  color: var(--color-ink);
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-forest-dark);
 }
 
 .aid-station-notes {
@@ -847,7 +886,7 @@ h2.center {
 .pace-planning-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 24px 28px;
   margin-bottom: 32px;
@@ -1230,7 +1269,7 @@ h2.center {
   gap: 20px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   padding: 24px;
 }
@@ -1246,7 +1285,7 @@ h2.center {
   gap: 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 20px;
 }
@@ -1291,7 +1330,7 @@ h2.center {
 }
 
 .crew-name {
-  font-family: Georgia, serif;
+  font-family: 'Archivo', system-ui, sans-serif;
   font-weight: 700;
   color: var(--color-forest-dark);
   font-size: 1.05rem;
@@ -1304,11 +1343,16 @@ h2.center {
   letter-spacing: 0.04em;
   padding: 3px 9px;
   border-radius: 999px;
-  background: rgba(224, 99, 43, 0.12);
-  color: var(--color-ember-dark);
+  background: rgba(124, 138, 111, 0.18);
+  color: var(--color-forest-dark);
 }
 
 .crew-role-badge.role-captain {
+  background: var(--color-ember);
+  color: #fff;
+}
+
+.crew-role-badge.role-pacer {
   background: var(--color-forest);
   color: #fff;
 }
@@ -1725,6 +1769,227 @@ h2.center {
 
   .crew-captain-card {
     flex-direction: column;
+  }
+}
+
+/* Race day plan — modern reskin (race.html only, scoped via .race-modern) */
+
+.race-modern {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.race-modern .rd-hero-title,
+.race-modern .fp-heading,
+.race-modern .fp-value,
+.race-modern .fp-mini-value,
+.race-modern .rd-hero-stat dd {
+  font-family: 'Archivo', system-ui, sans-serif;
+}
+
+.rd-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--color-forest);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 28px;
+}
+
+.rd-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rd-hero-avatar,
+.rd-hero-avatar-placeholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.rd-hero-avatar {
+  border: 2px solid var(--color-ember);
+}
+
+.rd-hero-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-forest-dark);
+  border: 2px solid var(--color-ember);
+  color: #fff;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.rd-hero-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ember);
+  margin: 0 0 2px 0;
+}
+
+.rd-hero-title {
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  color: #fff;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.rd-hero-sub {
+  font-size: 0.86rem;
+  color: rgba(244, 241, 234, 0.75);
+  margin: 2px 0 0 0;
+}
+
+.rd-hero-stats {
+  display: flex;
+  gap: 20px;
+  background: var(--color-forest-dark);
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin: 0;
+}
+
+.rd-hero-stat {
+  text-align: center;
+}
+
+.rd-hero-stat dt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(244, 241, 234, 0.6);
+  margin: 0 0 2px 0;
+}
+
+.rd-hero-stat dd {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  margin: 0;
+}
+
+.finish-projection-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 22px 26px;
+  margin-bottom: 28px;
+}
+
+.fp-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-forest-dark);
+  margin: 0 0 10px 0;
+}
+
+.fp-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.fp-value {
+  font-weight: 900;
+  font-size: 2.4rem;
+  color: var(--color-ember);
+  line-height: 1;
+}
+
+.fp-unit {
+  font-size: 0.85rem;
+  color: var(--color-ink-soft);
+}
+
+.fp-sub {
+  font-size: 0.85rem;
+  color: var(--color-ink-soft);
+  margin: 6px 0 0 0;
+}
+
+.fp-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.fp-mini-stat {
+  background: var(--color-bg);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.fp-mini-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-soft);
+  margin-bottom: 2px;
+}
+
+.fp-mini-value {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-forest-dark);
+}
+
+.rd-map-pin-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-forest);
+  color: #fff;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.7rem;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.rd-map-pin-badge.no-crew {
+  background: var(--color-ember-dark);
+}
+
+@media (max-width: 640px) {
+  .rd-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rd-hero-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fp-mini-stats {
+    grid-template-columns: 1fr;
   }
 }
 

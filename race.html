@@ -114,8 +114,11 @@
           </select>
 
           <div id="crew-station-field" hidden>
-            <label class="auth-label" for="crew-station-input">Meets At Aid Station</label>
-            <select class="auth-input" id="crew-station-input"></select>
+            <label class="auth-label" for="crew-start-station-input">Starting Aid Station</label>
+            <select class="auth-input" id="crew-start-station-input"></select>
+
+            <label class="auth-label" for="crew-end-station-input">Ending Aid Station</label>
+            <select class="auth-input" id="crew-end-station-input"></select>
           </div>
 
           <label class="auth-label" for="crew-phone-input">Phone</label>
@@ -233,9 +236,11 @@
           addCrewBtn.style.display = '';
         }
 
+        const crewSelectFields = 'id, name, role, photo_url, bio, phone, email, tasks, start_aid_station_id, end_aid_station_id, invite_status, user_id, start_station:aid_stations!crew_members_start_aid_station_id_fkey(name, mile_marker), end_station:aid_stations!crew_members_end_aid_station_id_fkey(name, mile_marker)';
+
         const { data: crewMembers } = await supabase
           .from('crew_members')
-          .select('id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, invite_status, user_id, aid_stations(name, mile_marker)')
+          .select(crewSelectFields)
           .eq('race_id', raceId)
           .order('order_index', { ascending: true });
 
@@ -250,7 +255,8 @@
         const crewNameInput = document.getElementById('crew-name-input');
         const crewRoleInput = document.getElementById('crew-role-input');
         const crewStationField = document.getElementById('crew-station-field');
-        const crewStationInput = document.getElementById('crew-station-input');
+        const crewStartStationInput = document.getElementById('crew-start-station-input');
+        const crewEndStationInput = document.getElementById('crew-end-station-input');
         const crewPhoneInput = document.getElementById('crew-phone-input');
         const crewEmailInput = document.getElementById('crew-email-input');
         const crewBioInput = document.getElementById('crew-bio-input');
@@ -263,16 +269,21 @@
         let selectedPhotoFile = null;
         let existingPhotoUrl = null;
 
-        const noneOpt = document.createElement('option');
-        noneOpt.value = '';
-        noneOpt.textContent = 'Not assigned yet';
-        crewStationInput.appendChild(noneOpt);
-        stations.forEach((s) => {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.textContent = `${s.name} (mile ${s.mile_marker})`;
-          crewStationInput.appendChild(opt);
-        });
+        function populateStationSelect(select, placeholderText) {
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = placeholderText;
+          select.appendChild(placeholder);
+          stations.forEach((s) => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.name} (mile ${s.mile_marker})`;
+            select.appendChild(opt);
+          });
+        }
+
+        populateStationSelect(crewStartStationInput, 'Not assigned yet');
+        populateStationSelect(crewEndStationInput, 'Through the finish');
 
         function initials(name) {
           return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
@@ -313,10 +324,16 @@
           nameRow.append(nameEl, roleBadge);
           body.appendChild(nameRow);
 
-          if (member.role === 'pacer' && member.aid_stations) {
+          if (member.role === 'pacer' && (member.start_station || member.end_station)) {
             const stationNote = document.createElement('p');
             stationNote.className = 'crew-station-note';
-            stationNote.textContent = `Meets at ${member.aid_stations.name} (mile ${member.aid_stations.mile_marker})`;
+            const startText = member.start_station
+              ? `${member.start_station.name} (mile ${member.start_station.mile_marker})`
+              : 'Start TBD';
+            const endText = member.end_station
+              ? `${member.end_station.name} (mile ${member.end_station.mile_marker})`
+              : 'Finish';
+            stationNote.textContent = `Paces ${startText} → ${endText}`;
             body.appendChild(stationNote);
           }
 
@@ -496,7 +513,8 @@
             if (member.role === 'pacer') {
               crewStationField.hidden = false;
               crewStationField.style.display = '';
-              crewStationInput.value = member.aid_station_id || '';
+              crewStartStationInput.value = member.start_aid_station_id || '';
+              crewEndStationInput.value = member.end_aid_station_id || '';
             }
             if (member.photo_url) {
               crewPhotoPreview.src = member.photo_url;
@@ -574,15 +592,15 @@
             phone: crewPhoneInput.value.trim() || null,
             email: crewEmailInput.value.trim() || null,
             tasks: crewTasksInput.value.trim() || null,
-            aid_station_id: role === 'pacer' && crewStationInput.value ? crewStationInput.value : null,
+            start_aid_station_id: role === 'pacer' && crewStartStationInput.value ? crewStartStationInput.value : null,
+            end_aid_station_id: role === 'pacer' && crewEndStationInput.value ? crewEndStationInput.value : null,
             created_by: session.user.id,
           };
 
-          const selectFields = 'id, name, role, photo_url, bio, phone, email, tasks, aid_station_id, invite_status, user_id, aid_stations(name, mile_marker)';
           const wasNewMember = !editingCrewId;
           const result = editingCrewId
-            ? await supabase.from('crew_members').update(payload).eq('id', editingCrewId).select(selectFields).single()
-            : await supabase.from('crew_members').insert(payload).select(selectFields).single();
+            ? await supabase.from('crew_members').update(payload).eq('id', editingCrewId).select(crewSelectFields).single()
+            : await supabase.from('crew_members').insert(payload).select(crewSelectFields).single();
 
           if (result.error) {
             crewSaveBtn.disabled = false;
@@ -624,6 +642,10 @@
           return new Date(new Date(race.start_time).getTime() + hoursIn * 3600 * 1000);
         }
 
+        const CARB_GRAMS_PER_HOUR = 60;
+        const CALORIES_PER_HOUR = 250;
+        const DEFAULT_GOAL_FINISH_HOURS = 33;
+
         function formatArrival(date) {
           if (!date) return null;
           return date.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
@@ -636,14 +658,14 @@
         if (dropBagStationIds.length > 0) {
           const { data: catalogItems } = await supabase
             .from('user_items')
-            .select('id, category, name')
+            .select('id, category, name, calories, carbs')
             .eq('user_id', session.user.id)
             .order('name', { ascending: true });
           userItems = catalogItems || [];
 
           const { data: bagItems } = await supabase
             .from('drop_bag_items')
-            .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category)')
+            .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category, calories, carbs)')
             .eq('user_id', session.user.id)
             .in('aid_station_id', dropBagStationIds)
             .order('created_at', { ascending: true });
@@ -656,7 +678,7 @@
           });
         }
 
-        function buildDropBagItemRow(entry) {
+        function buildDropBagItemRow(entry, onChange) {
           const li = document.createElement('li');
           li.className = 'drop-bag-item';
           if (entry.is_packed) li.classList.add('is-packed');
@@ -685,6 +707,7 @@
             const idx = stationItems.findIndex((e) => e.id === entry.id);
             if (idx > -1) stationItems.splice(idx, 1);
             li.remove();
+            if (onChange) onChange();
           });
 
           li.append(label, removeBtn);
@@ -700,23 +723,68 @@
           heading.textContent = 'Drop Bag Checklist';
           panel.appendChild(heading);
 
+          const stationIndex = stations.findIndex((s) => s.id === station.id);
+          const nextStationMarker = stationIndex > -1 && stationIndex < stations.length - 1
+            ? stations[stationIndex + 1].mile_marker
+            : race.total_distance_miles;
+          const segmentMiles = nextStationMarker != null ? nextStationMarker - station.mile_marker : null;
+          const effectiveGoalHours = race.goal_finish_hours || DEFAULT_GOAL_FINISH_HOURS;
+          const segmentHours = segmentMiles != null && race.total_distance_miles
+            ? (segmentMiles / race.total_distance_miles) * effectiveGoalHours
+            : null;
+          const targetCarbs = segmentHours != null ? segmentHours * CARB_GRAMS_PER_HOUR : null;
+          const targetCalories = segmentHours != null ? segmentHours * CALORIES_PER_HOUR : null;
+
+          const nutritionSummary = document.createElement('div');
+          nutritionSummary.className = 'nutrition-summary';
+
+          function refreshNutritionSummary() {
+            nutritionSummary.innerHTML = '';
+            if (targetCarbs == null) return;
+
+            const items = dropBagItemsByStation.get(station.id) || [];
+            let packedCarbs = 0;
+            let packedCalories = 0;
+            items.forEach((entry) => {
+              if (entry.user_items.category === 'nutrition') {
+                packedCarbs += Number(entry.user_items.carbs) || 0;
+                packedCalories += Number(entry.user_items.calories) || 0;
+              }
+            });
+
+            const targetLine = document.createElement('p');
+            targetLine.className = 'nutrition-target-line';
+            const goalNote = race.goal_finish_hours ? '' : ' (using default 33hr goal — set yours above)';
+            targetLine.textContent = `Target for next ${segmentMiles.toFixed(1)} mi (~${segmentHours.toFixed(1)}hr): ${Math.round(targetCarbs)}g carbs · ${Math.round(targetCalories)} cal${goalNote}`;
+            nutritionSummary.appendChild(targetLine);
+
+            const packedLine = document.createElement('p');
+            packedLine.className = 'nutrition-packed-line ' + (packedCarbs >= targetCarbs ? 'nutrition-met' : 'nutrition-under');
+            packedLine.textContent = `Packed so far: ${Math.round(packedCarbs)}g carbs · ${Math.round(packedCalories)} cal`;
+            nutritionSummary.appendChild(packedLine);
+          }
+
           const list = document.createElement('ul');
           list.className = 'drop-bag-items';
           (dropBagItemsByStation.get(station.id) || []).forEach((entry) => {
-            list.appendChild(buildDropBagItemRow(entry));
+            list.appendChild(buildDropBagItemRow(entry, refreshNutritionSummary));
           });
           panel.appendChild(list);
+
+          refreshNutritionSummary();
+          panel.appendChild(nutritionSummary);
 
           async function addToBag(userItem) {
             const { data, error } = await supabase
               .from('drop_bag_items')
               .insert({ aid_station_id: station.id, user_id: session.user.id, user_item_id: userItem.id })
-              .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category)')
+              .select('id, aid_station_id, user_item_id, is_packed, user_items(name, category, calories, carbs)')
               .single();
             if (!error && data) {
               if (!dropBagItemsByStation.has(station.id)) dropBagItemsByStation.set(station.id, []);
               dropBagItemsByStation.get(station.id).push(data);
-              list.appendChild(buildDropBagItemRow(data));
+              list.appendChild(buildDropBagItemRow(data, refreshNutritionSummary));
+              refreshNutritionSummary();
             }
             return error;
           }
@@ -782,12 +850,38 @@
           input.placeholder = 'New item name…';
           input.className = 'drop-bag-input';
 
+          const caloriesInput = document.createElement('input');
+          caloriesInput.type = 'number';
+          caloriesInput.min = '0';
+          caloriesInput.placeholder = 'Cal';
+          caloriesInput.className = 'drop-bag-input nutrition-macro-input';
+          caloriesInput.hidden = true;
+          caloriesInput.style.display = 'none';
+
+          const carbsInput = document.createElement('input');
+          carbsInput.type = 'number';
+          carbsInput.min = '0';
+          carbsInput.placeholder = 'Carbs (g)';
+          carbsInput.className = 'drop-bag-input nutrition-macro-input';
+          carbsInput.hidden = true;
+          carbsInput.style.display = 'none';
+
+          function toggleMacroInputs() {
+            const isNutrition = catSelect.value === 'nutrition';
+            caloriesInput.hidden = !isNutrition;
+            caloriesInput.style.display = isNutrition ? '' : 'none';
+            carbsInput.hidden = !isNutrition;
+            carbsInput.style.display = isNutrition ? '' : 'none';
+          }
+          catSelect.addEventListener('change', toggleMacroInputs);
+          toggleMacroInputs();
+
           const addBtn = document.createElement('button');
           addBtn.type = 'submit';
           addBtn.className = 'drop-bag-add-btn';
           addBtn.textContent = 'Add New';
 
-          newItemForm.append(catSelect, input, addBtn);
+          newItemForm.append(catSelect, input, caloriesInput, carbsInput, addBtn);
 
           newItemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -798,9 +892,14 @@
             let userItem = userItems.find((it) => it.category === category && it.name.toLowerCase() === name.toLowerCase());
 
             if (!userItem) {
+              const newItemPayload = { user_id: session.user.id, category, name };
+              if (category === 'nutrition') {
+                newItemPayload.calories = caloriesInput.value ? parseFloat(caloriesInput.value) : null;
+                newItemPayload.carbs = carbsInput.value ? parseFloat(carbsInput.value) : null;
+              }
               const { data, error } = await supabase
                 .from('user_items')
-                .insert({ user_id: session.user.id, category, name })
+                .insert(newItemPayload)
                 .select()
                 .single();
               if (error) return;
@@ -814,6 +913,8 @@
               refreshSelectOptions();
             }
             input.value = '';
+            caloriesInput.value = '';
+            carbsInput.value = '';
           });
           panel.appendChild(newItemForm);
 

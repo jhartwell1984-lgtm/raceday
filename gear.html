@@ -41,8 +41,10 @@
 
         <section class="gear-section">
           <h2 class="elevation-heading">Nutrition</h2>
-          <form class="gear-add-form" id="nutrition-add-form">
+          <form class="gear-add-form nutrition-add-form" id="nutrition-add-form">
             <input class="auth-input" type="text" id="nutrition-input" placeholder="e.g. Gu Energy Gel" />
+            <input class="auth-input nutrition-macro-input" type="number" id="nutrition-calories-input" placeholder="Cal" min="0" />
+            <input class="auth-input nutrition-macro-input" type="number" id="nutrition-carbs-input" placeholder="Carbs (g)" min="0" />
             <button type="submit" class="drop-bag-add-btn">Add</button>
           </form>
           <p class="field-hint" id="nutrition-status"></p>
@@ -79,8 +81,22 @@
       const li = document.createElement('li');
       li.className = 'gear-item';
 
+      const textWrap = document.createElement('span');
+      textWrap.className = 'gear-item-text';
+
       const span = document.createElement('span');
       span.textContent = item.name;
+      textWrap.appendChild(span);
+
+      if (item.category === 'nutrition' && (item.calories || item.carbs)) {
+        const macros = document.createElement('span');
+        macros.className = 'gear-item-macros';
+        const parts = [];
+        if (item.calories) parts.push(`${item.calories} cal`);
+        if (item.carbs) parts.push(`${item.carbs}g carbs`);
+        macros.textContent = parts.join(' · ');
+        textWrap.appendChild(macros);
+      }
 
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
@@ -93,15 +109,17 @@
         li.remove();
       });
 
-      li.append(span, removeBtn);
+      li.append(textWrap, removeBtn);
       listEl.appendChild(li);
     }
 
-    function wireCategory(category, formId, inputId, statusId, listId) {
+    function wireCategory(category, formId, inputId, statusId, listId, macroInputIds) {
       const form = document.getElementById(formId);
       const input = document.getElementById(inputId);
       const status = document.getElementById(statusId);
       const listEl = document.getElementById(listId);
+      const caloriesInput = macroInputIds ? document.getElementById(macroInputIds.calories) : null;
+      const carbsInput = macroInputIds ? document.getElementById(macroInputIds.carbs) : null;
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -111,9 +129,13 @@
         status.textContent = '';
         status.className = 'field-hint';
 
+        const payload = { user_id: session.user.id, category, name };
+        if (caloriesInput) payload.calories = caloriesInput.value ? parseFloat(caloriesInput.value) : null;
+        if (carbsInput) payload.carbs = carbsInput.value ? parseFloat(carbsInput.value) : null;
+
         const { data, error } = await supabase
           .from('user_items')
-          .insert({ user_id: session.user.id, category, name })
+          .insert(payload)
           .select()
           .single();
 
@@ -122,17 +144,22 @@
           status.classList.add('field-hint-error');
         } else {
           input.value = '';
+          if (caloriesInput) caloriesInput.value = '';
+          if (carbsInput) carbsInput.value = '';
           buildItemRow(data, listEl);
         }
       });
     }
 
     wireCategory('gear', 'gear-add-form', 'gear-input', 'gear-status', 'gear-list');
-    wireCategory('nutrition', 'nutrition-add-form', 'nutrition-input', 'nutrition-status', 'nutrition-list');
+    wireCategory('nutrition', 'nutrition-add-form', 'nutrition-input', 'nutrition-status', 'nutrition-list', {
+      calories: 'nutrition-calories-input',
+      carbs: 'nutrition-carbs-input',
+    });
 
     const { data: items } = await supabase
       .from('user_items')
-      .select('id, category, name')
+      .select('id, category, name, calories, carbs')
       .eq('user_id', session.user.id)
       .order('name', { ascending: true });
 

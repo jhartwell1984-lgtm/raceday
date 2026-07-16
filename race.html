@@ -9,21 +9,22 @@
 </head>
 <body>
 
-  <header class="site-header">
-    <div class="container header-inner">
-      <a href="index.html" class="logo-group">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="index.html" class="logo-group sidebar-logo">
         <span class="logo">Race<span>Day</span></span>
         <span class="badge">Crew</span>
       </a>
-      <nav class="nav">
-        <a href="dashboard.html">Dashboard</a>
-        <a href="gear.html">My Gear</a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="sidebar-link">My Races</a>
+        <a href="race-search.html" class="sidebar-link">Find a Race</a>
+        <a href="gear.html" class="sidebar-link">My Gear</a>
+        <a href="account.html" class="sidebar-link">Account</a>
       </nav>
-      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
-    </div>
-  </header>
+      <button type="button" class="btn btn-secondary sidebar-signout" id="sign-out-btn">Sign Out</button>
+    </aside>
 
-  <main class="race-page">
+  <main class="app-main race-page">
     <div class="container">
       <p class="auth-status" id="loading-status">Loading race...</p>
 
@@ -152,16 +153,7 @@
       </div>
     </div>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <span class="logo-group">
-        <span class="logo">Race<span>Day</span></span>
-        <span class="badge">Crew</span>
-      </span>
-      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
-    </div>
-  </footer>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module">
@@ -175,6 +167,11 @@
     document.getElementById('sign-out-btn').addEventListener('click', async () => {
       await supabase.auth.signOut();
       window.location.href = 'login.html';
+    });
+
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.sidebar-link').forEach((link) => {
+      if (link.getAttribute('href') === currentPage) link.classList.add('is-active');
     });
 
     const escapeHtml = (str) =>
@@ -1020,6 +1017,46 @@
           const nutritionSummary = document.createElement('div');
           nutritionSummary.className = 'nutrition-summary';
 
+          function buildNutritionStatGroup(label, packedVal, targetVal, unit) {
+            const group = document.createElement('div');
+            group.className = 'nutrition-stat-group';
+
+            const groupLabel = document.createElement('span');
+            groupLabel.className = 'nutrition-stat-group-label';
+            groupLabel.textContent = label;
+            group.appendChild(groupLabel);
+
+            const row = document.createElement('div');
+            row.className = 'nutrition-stat-row';
+
+            const remainingVal = Math.max(0, targetVal - packedVal);
+            const isMet = packedVal >= targetVal;
+
+            [
+              ['Packed', packedVal, null],
+              ['Target', targetVal, null],
+              ['Remaining', remainingVal, 'nutrition-stat-remaining'],
+            ].forEach(([statLabel, value, extraClass]) => {
+              const stat = document.createElement('div');
+              stat.className = 'nutrition-stat' + (extraClass ? ` ${extraClass}` : '');
+              if (extraClass === 'nutrition-stat-remaining' && isMet) stat.classList.add('is-met');
+
+              const valueEl = document.createElement('span');
+              valueEl.className = 'nutrition-stat-value';
+              valueEl.textContent = `${Math.round(value)}${unit}`;
+
+              const labelEl = document.createElement('span');
+              labelEl.className = 'nutrition-stat-label';
+              labelEl.textContent = statLabel;
+
+              stat.append(valueEl, labelEl);
+              row.appendChild(stat);
+            });
+
+            group.appendChild(row);
+            return group;
+          }
+
           function refreshNutritionSummary() {
             nutritionSummary.innerHTML = '';
             if (targetCarbs == null) return;
@@ -1035,16 +1072,17 @@
               }
             });
 
-            const targetLine = document.createElement('p');
-            targetLine.className = 'nutrition-target-line';
-            const goalNote = participant.goal_finish_hours ? '' : ' (using default 33hr goal — set yours above)';
-            targetLine.textContent = `Target until ${nextRestock.name} (${segmentMiles.toFixed(1)} mi, ~${segmentHours.toFixed(1)}hr): ${Math.round(targetCarbs)}g carbs · ${Math.round(targetCalories)} cal${goalNote}`;
-            nutritionSummary.appendChild(targetLine);
+            const contextLine = document.createElement('p');
+            contextLine.className = 'nutrition-context-line';
+            const goalNote = participant.goal_finish_hours ? '' : ' · using default 33hr goal — set yours above';
+            contextLine.textContent = `Until ${nextRestock.name} (${segmentMiles.toFixed(1)} mi, ~${segmentHours.toFixed(1)}hr)${goalNote}`;
+            nutritionSummary.appendChild(contextLine);
 
-            const packedLine = document.createElement('p');
-            packedLine.className = 'nutrition-packed-line ' + (packedCarbs >= targetCarbs ? 'nutrition-met' : 'nutrition-under');
-            packedLine.textContent = `Packed so far: ${Math.round(packedCarbs)}g carbs · ${Math.round(packedCalories)} cal`;
-            nutritionSummary.appendChild(packedLine);
+            const groups = document.createElement('div');
+            groups.className = 'nutrition-stat-groups';
+            groups.appendChild(buildNutritionStatGroup('Carbs', packedCarbs, targetCarbs, 'g'));
+            groups.appendChild(buildNutritionStatGroup('Calories', packedCalories, targetCalories, ''));
+            nutritionSummary.appendChild(groups);
           }
 
           const list = document.createElement('ul');

@@ -8,20 +8,22 @@
 </head>
 <body>
 
-  <header class="site-header">
-    <div class="container header-inner">
-      <a href="index.html" class="logo-group">
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="index.html" class="logo-group sidebar-logo">
         <span class="logo">Race<span>Day</span></span>
         <span class="badge">Crew</span>
       </a>
-      <nav class="nav">
-        <a href="dashboard.html">Dashboard</a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="sidebar-link">My Races</a>
+        <a href="race-search.html" class="sidebar-link">Find a Race</a>
+        <a href="gear.html" class="sidebar-link">My Gear</a>
+        <a href="account.html" class="sidebar-link">Account</a>
       </nav>
-      <button type="button" class="btn btn-secondary btn-nav" id="sign-out-btn">Sign Out</button>
-    </div>
-  </header>
+      <button type="button" class="btn btn-secondary sidebar-signout" id="sign-out-btn">Sign Out</button>
+    </aside>
 
-  <main class="auth-page topo-bg">
+  <main class="app-main auth-page topo-bg">
     <div class="container">
       <div class="auth-card form-card">
         <p class="eyebrow center">New Race</p>
@@ -54,16 +56,7 @@
       </div>
     </div>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <span class="logo-group">
-        <span class="logo">Race<span>Day</span></span>
-        <span class="badge">Crew</span>
-      </span>
-      <p>&copy; 2026 RaceDay. Crew is built for the people who keep runners moving forward.</p>
-    </div>
-  </footer>
+  </div>
 
   <script type="module">
     import { supabase } from './supabase-client.js';
@@ -160,6 +153,11 @@
         .insert({ race_id: race.id, user_id: session.user.id });
 
       window.location.href = `race.html?id=${race.id}`;
+    });
+
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.sidebar-link').forEach((link) => {
+      if (link.getAttribute('href') === currentPage) link.classList.add('is-active');
     });
   </script>
 

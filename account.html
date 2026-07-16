@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account &amp; Settings — Crew, by RaceDay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a href="index.html" class="logo-group sidebar-logo">
+        <span class="logo">Race<span>Day</span></span>
+        <span class="badge">Crew</span>
+      </a>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="sidebar-link">My Races</a>
+        <a href="race-search.html" class="sidebar-link">Find a Race</a>
+        <a href="gear.html" class="sidebar-link">My Gear</a>
+        <a href="account.html" class="sidebar-link">Account</a>
+      </nav>
+      <button type="button" class="btn btn-secondary sidebar-signout" id="sign-out-btn">Sign Out</button>
+    </aside>
+
+  <main class="app-main race-page">
+    <div class="container">
+      <h1 class="race-heading">Account &amp; Settings</h1>
+      <p class="auth-sub">Update your profile info, photo, and login email.</p>
+
+      <div class="auth-card form-card">
+        <p class="eyebrow">Profile</p>
+
+        <div class="crew-photo-row">
+          <div class="crew-photo-preview-wrap">
+            <img id="account-photo-preview" class="crew-photo-preview" hidden alt="" />
+            <span id="account-photo-placeholder" class="crew-photo-placeholder">?</span>
+          </div>
+          <input type="file" id="account-photo-input" accept="image/*" class="crew-photo-input" />
+        </div>
+
+        <form id="profile-form" class="auth-form">
+          <label class="auth-label" for="account-name-input">Full Name</label>
+          <input class="auth-input" type="text" id="account-name-input" placeholder="Your name" />
+
+          <label class="auth-label" for="account-phone-input">Phone</label>
+          <input class="auth-input" type="tel" id="account-phone-input" placeholder="(555) 555-5555" />
+
+          <button type="submit" class="btn btn-primary auth-submit" id="profile-save-btn">Save Profile</button>
+          <p class="auth-status" id="profile-status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div class="auth-card form-card">
+        <p class="eyebrow">Email</p>
+        <p class="auth-sub">Current email: <strong id="current-email-display"></strong></p>
+
+        <form id="email-form" class="auth-form">
+          <label class="auth-label" for="account-email-input">New Email</label>
+          <input class="auth-input" type="email" id="account-email-input" placeholder="you@example.com" required />
+
+          <button type="submit" class="btn btn-primary auth-submit" id="email-save-btn">Update Email</button>
+          <p class="auth-status" id="email-status" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+    }
+
+    document.getElementById('sign-out-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    const currentPage = window.location.pathname.split('/').pop();
+    document.querySelectorAll('.sidebar-link').forEach((link) => {
+      if (link.getAttribute('href') === currentPage) link.classList.add('is-active');
+    });
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, email, phone, photo_url')
+      .eq('id', session.user.id)
+      .single();
+
+    const nameInput = document.getElementById('account-name-input');
+    const phoneInput = document.getElementById('account-phone-input');
+    const photoPreview = document.getElementById('account-photo-preview');
+    const photoPlaceholder = document.getElementById('account-photo-placeholder');
+    const photoInput = document.getElementById('account-photo-input');
+    const profileStatus = document.getElementById('profile-status');
+    const profileSaveBtn = document.getElementById('profile-save-btn');
+
+    let photoFile = null;
+    let currentPhotoUrl = null;
+
+    if (!profileError && profile) {
+      nameInput.value = profile.full_name || '';
+      phoneInput.value = profile.phone || '';
+      currentPhotoUrl = profile.photo_url;
+      document.getElementById('current-email-display').textContent = profile.email || session.user.email;
+
+      if (profile.photo_url) {
+        photoPreview.src = profile.photo_url;
+        photoPreview.hidden = false;
+        photoPreview.style.display = 'block';
+        photoPlaceholder.style.display = 'none';
+      } else {
+        const initials = (profile.full_name || profile.email || '?')
+          .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+        photoPlaceholder.textContent = initials || '?';
+      }
+    } else {
+      document.getElementById('current-email-display').textContent = session.user.email;
+    }
+
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      photoFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        photoPreview.src = reader.result;
+        photoPreview.hidden = false;
+        photoPreview.style.display = 'block';
+        photoPlaceholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('profile-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      profileSaveBtn.disabled = true;
+      profileSaveBtn.textContent = 'Saving...';
+      profileStatus.textContent = '';
+      profileStatus.className = 'auth-status';
+
+      let photoUrl = currentPhotoUrl;
+
+      if (photoFile) {
+        const path = `${session.user.id}/${crypto.randomUUID()}-${photoFile.name}`;
+        const { error: uploadError } = await supabase.storage.from('crew-photos').upload(path, photoFile);
+        if (uploadError) {
+          profileStatus.textContent = uploadError.message;
+          profileStatus.classList.add('auth-status-error');
+          profileSaveBtn.disabled = false;
+          profileSaveBtn.textContent = 'Save Profile';
+          return;
+        }
+        photoUrl = supabase.storage.from('crew-photos').getPublicUrl(path).data.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: nameInput.value.trim() || null,
+          phone: phoneInput.value.trim() || null,
+          photo_url: photoUrl,
+        })
+        .eq('id', session.user.id);
+
+      profileSaveBtn.disabled = false;
+      profileSaveBtn.textContent = 'Save Profile';
+
+      if (error) {
+        profileStatus.textContent = error.message;
+        profileStatus.classList.add('auth-status-error');
+      } else {
+        currentPhotoUrl = photoUrl;
+        photoFile = null;
+        profileStatus.textContent = 'Saved.';
+        profileStatus.classList.add('auth-status-success');
+      }
+    });
+
+    const emailInput = document.getElementById('account-email-input');
+    const emailStatus = document.getElementById('email-status');
+    const emailSaveBtn = document.getElementById('email-save-btn');
+
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newEmail = emailInput.value.trim();
+      if (!newEmail) return;
+
+      emailSaveBtn.disabled = true;
+      emailSaveBtn.textContent = 'Sending...';
+      emailStatus.textContent = '';
+      emailStatus.className = 'auth-status';
+
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+
+      emailSaveBtn.disabled = false;
+      emailSaveBtn.textContent = 'Update Email';
+
+      if (error) {
+        emailStatus.textContent = error.message;
+        emailStatus.classList.add('auth-status-error');
+      } else {
+        emailStatus.textContent = 'Check both your old and new email inboxes to confirm this change.';
+        emailStatus.classList.add('auth-status-success');
+        emailInput.value = '';
+      }
+    });
+  </script>
+
+</body>
+</html>

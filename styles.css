@@ -764,6 +764,12 @@ h2.center {
   font-style: italic;
 }
 
+.aid-station-nutrition-note {
+  font-size: 0.82rem;
+  color: var(--color-forest);
+  margin: 4px 0 0 0;
+}
+
 .aid-station-badges {
   display: flex;
   flex-wrap: wrap;

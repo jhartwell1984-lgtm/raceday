@@ -646,6 +646,25 @@
         const CALORIES_PER_HOUR = 250;
         const DEFAULT_GOAL_FINISH_HOURS = 33;
 
+        function computeNutritionTarget(station) {
+          const stationIndex = stations.findIndex((s) => s.id === station.id);
+          let nextRestock = { mile: race.total_distance_miles, name: 'the finish' };
+          for (let i = stationIndex + 1; i < stations.length; i++) {
+            if (stations[i].has_drop_bag || stations[i].has_crew_access) {
+              nextRestock = { mile: stations[i].mile_marker, name: stations[i].name };
+              break;
+            }
+          }
+          const segmentMiles = nextRestock.mile != null ? nextRestock.mile - station.mile_marker : null;
+          const effectiveGoalHours = race.goal_finish_hours || DEFAULT_GOAL_FINISH_HOURS;
+          const segmentHours = segmentMiles != null && race.total_distance_miles
+            ? (segmentMiles / race.total_distance_miles) * effectiveGoalHours
+            : null;
+          const targetCarbs = segmentHours != null ? segmentHours * CARB_GRAMS_PER_HOUR : null;
+          const targetCalories = segmentHours != null ? segmentHours * CALORIES_PER_HOUR : null;
+          return { nextRestock, segmentMiles, segmentHours, targetCarbs, targetCalories };
+        }
+
         function formatArrival(date) {
           if (!date) return null;
           return date.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
@@ -737,21 +756,7 @@
           heading.textContent = 'Drop Bag Checklist';
           panel.appendChild(heading);
 
-          const stationIndex = stations.findIndex((s) => s.id === station.id);
-          let nextRestock = { mile: race.total_distance_miles, name: 'the finish' };
-          for (let i = stationIndex + 1; i < stations.length; i++) {
-            if (stations[i].has_drop_bag || stations[i].has_crew_access) {
-              nextRestock = { mile: stations[i].mile_marker, name: stations[i].name };
-              break;
-            }
-          }
-          const segmentMiles = nextRestock.mile != null ? nextRestock.mile - station.mile_marker : null;
-          const effectiveGoalHours = race.goal_finish_hours || DEFAULT_GOAL_FINISH_HOURS;
-          const segmentHours = segmentMiles != null && race.total_distance_miles
-            ? (segmentMiles / race.total_distance_miles) * effectiveGoalHours
-            : null;
-          const targetCarbs = segmentHours != null ? segmentHours * CARB_GRAMS_PER_HOUR : null;
-          const targetCalories = segmentHours != null ? segmentHours * CALORIES_PER_HOUR : null;
+          const { nextRestock, segmentMiles, segmentHours, targetCarbs, targetCalories } = computeNutritionTarget(station);
 
           const nutritionSummary = document.createElement('div');
           nutritionSummary.className = 'nutrition-summary';
@@ -1016,6 +1021,15 @@
 
             if (station.has_drop_bag) {
               nameWrap.appendChild(buildDropBagPanel(station));
+            } else {
+              const target = computeNutritionTarget(station);
+              if (target.targetCarbs != null) {
+                const nutritionNote = document.createElement('p');
+                nutritionNote.className = 'aid-station-nutrition-note';
+                const goalNote = race.goal_finish_hours ? '' : ' (default 33hr goal)';
+                nutritionNote.textContent = `Nutrition needed until ${target.nextRestock.name} (${target.segmentMiles.toFixed(1)} mi, ~${target.segmentHours.toFixed(1)}hr): ${Math.round(target.targetCarbs)}g carbs · ${Math.round(target.targetCalories)} cal${goalNote}`;
+                nameWrap.appendChild(nutritionNote);
+              }
             }
 
             const gapEl = document.createElement('span');

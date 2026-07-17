@@ -37,6 +37,12 @@
       </div>
 
       <div id="race-content" hidden>
+        <div id="map" class="race-map"></div>
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot legend-dot-crew"></span> Aid / Crew Access</span>
+          <span class="legend-item"><span class="legend-dot legend-dot-aid"></span> Aid Station Only</span>
+        </div>
+
         <header class="rd-hero">
           <div class="rd-hero-left">
             <img id="hero-avatar" class="rd-hero-avatar" hidden alt="" />
@@ -63,39 +69,53 @@
           </dl>
         </header>
 
-        <section class="crew-section">
-          <h2 class="elevation-heading">Runner</h2>
-          <div id="runner-profile-content"></div>
-        </section>
-
-        <section class="crew-section">
-          <div class="crew-section-header">
-            <h2 class="elevation-heading">Crew</h2>
-            <button type="button" class="btn btn-primary btn-nav" id="add-crew-btn" hidden>+ Add Crew Member</button>
+        <div class="rd-content-grid">
+          <div class="rd-content-left">
+            <article class="aid-detail-card" id="aid-detail-card"></article>
           </div>
-          <div id="crew-content"></div>
-        </section>
+          <div class="rd-content-right">
+            <section class="roster-card">
+              <div class="roster-card-header">
+                <h2 class="roster-card-title">Runner</h2>
+              </div>
+              <div id="runner-profile-content" class="roster-list"></div>
+            </section>
 
-        <div class="finish-projection-card" id="finish-projection-card" hidden>
-          <h2 class="fp-heading">Goal Finish</h2>
-          <div class="fp-main">
-            <span class="fp-value" id="fp-goal-time">&mdash;</span>
-            <span class="fp-unit">elapsed</span>
-          </div>
-          <p class="fp-sub" id="fp-sub"></p>
-          <div class="fp-mini-stats">
-            <div class="fp-mini-stat">
-              <span class="fp-mini-label">Start</span>
-              <span class="fp-mini-value" id="fp-start">&mdash;</span>
+            <div class="finish-projection-card" id="finish-projection-card" hidden>
+              <h2 class="fp-heading">Goal Finish</h2>
+              <div class="fp-main">
+                <span class="fp-value" id="fp-goal-time">&mdash;</span>
+                <span class="fp-unit">elapsed</span>
+              </div>
+              <p class="fp-sub" id="fp-sub"></p>
+              <div class="fp-mini-stats">
+                <div class="fp-mini-stat">
+                  <span class="fp-mini-label">Start</span>
+                  <span class="fp-mini-value" id="fp-start">&mdash;</span>
+                </div>
+                <div class="fp-mini-stat">
+                  <span class="fp-mini-label">Goal Pace</span>
+                  <span class="fp-mini-value" id="fp-pace">&mdash;</span>
+                </div>
+                <div class="fp-mini-stat">
+                  <span class="fp-mini-label">Est. Finish</span>
+                  <span class="fp-mini-value" id="fp-finish-clock">&mdash;</span>
+                </div>
+              </div>
             </div>
-            <div class="fp-mini-stat">
-              <span class="fp-mini-label">Goal Pace</span>
-              <span class="fp-mini-value" id="fp-pace">&mdash;</span>
-            </div>
-            <div class="fp-mini-stat">
-              <span class="fp-mini-label">Est. Finish</span>
-              <span class="fp-mini-value" id="fp-finish-clock">&mdash;</span>
-            </div>
+
+            <section class="aid-timeline-card">
+              <h2 class="aid-timeline-title">Aid Stations</h2>
+              <div class="aid-timeline-list" id="aid-station-list"></div>
+            </section>
+
+            <section class="roster-card">
+              <div class="roster-card-header">
+                <h2 class="roster-card-title">My Crew</h2>
+                <button type="button" class="roster-add-btn" id="add-crew-btn" hidden>+ Add</button>
+              </div>
+              <div id="crew-content" class="roster-list"></div>
+            </section>
           </div>
         </div>
 
@@ -115,15 +135,6 @@
           </form>
           <p class="auth-status" id="pacing-status"></p>
         </div>
-
-        <div id="map" class="race-map"></div>
-        <div class="map-legend">
-          <span class="legend-item"><span class="legend-dot legend-dot-crew"></span> Aid / Crew Access</span>
-          <span class="legend-item"><span class="legend-dot legend-dot-aid"></span> Aid Station Only</span>
-        </div>
-
-        <h2 class="elevation-heading">Aid Stations</h2>
-        <div class="aid-station-list" id="aid-station-list"></div>
 
         <h2 class="elevation-heading">Elevation Profile</h2>
         <div class="elevation-chart">
@@ -207,6 +218,53 @@
     const escapeHtml = (str) =>
       String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    const ROSTER_ICONS = {
+      phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+      mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+      send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+      lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    };
+
+    function rosterIconBtn(iconName, label, extraClass) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'roster-icon-btn' + (extraClass ? ` ${extraClass}` : '');
+      btn.innerHTML = ROSTER_ICONS[iconName];
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      return btn;
+    }
+
+    function rosterInitials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+    }
+
+    function buildRosterAvatar(photoUrl, name, inviteStatus) {
+      const wrap = document.createElement('div');
+      wrap.className = 'roster-avatar-wrap';
+      if (photoUrl) {
+        const img = document.createElement('img');
+        img.className = 'roster-avatar';
+        img.src = photoUrl;
+        img.alt = name;
+        wrap.appendChild(img);
+      } else {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'roster-avatar-placeholder';
+        placeholder.textContent = rosterInitials(name);
+        wrap.appendChild(placeholder);
+      }
+      if (inviteStatus) {
+        const dot = document.createElement('span');
+        dot.className = `roster-status-dot invite-${inviteStatus}`;
+        dot.title = inviteStatus === 'linked' ? 'Linked to account' : inviteStatus === 'invited' ? 'Invite sent' : 'Not invited';
+        wrap.appendChild(dot);
+      }
+      return wrap;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const raceId = params.get('id');
     const loadingStatus = document.getElementById('loading-status');
@@ -228,7 +286,7 @@
 
       const { data: aidStations } = await supabase
         .from('aid_stations')
-        .select('id, name, mile_marker, lat, lon, has_drop_bag, has_crew_access, cutoff_time, notes')
+        .select('id, name, mile_marker, lat, lon, has_drop_bag, has_crew_access, cutoff_time, notes, mantra, food_notes, drop_bag_notes')
         .eq('race_id', raceId)
         .order('mile_marker', { ascending: true });
 
@@ -306,72 +364,48 @@
         function renderRunnerDisplay() {
           runnerContentEl.innerHTML = '';
 
-          const card = document.createElement('div');
-          card.className = 'crew-captain-card';
+          const row = document.createElement('div');
+          row.className = 'roster-row';
 
-          if (participant.photo_url) {
-            const img = document.createElement('img');
-            img.className = 'crew-photo';
-            img.src = participant.photo_url;
-            img.alt = runnerName;
-            card.appendChild(img);
-          } else {
-            const placeholder = document.createElement('span');
-            placeholder.className = 'crew-avatar-placeholder';
-            placeholder.textContent = runnerName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
-            card.appendChild(placeholder);
-          }
+          row.appendChild(buildRosterAvatar(participant.photo_url, runnerName, null));
 
           const body = document.createElement('div');
-          body.className = 'crew-card-body';
+          body.className = 'roster-row-body';
 
-          const nameRow = document.createElement('div');
-          nameRow.className = 'crew-name-row';
-          const nameEl = document.createElement('span');
-          nameEl.className = 'crew-name';
+          const nameEl = document.createElement('p');
+          nameEl.className = 'roster-row-name';
           nameEl.textContent = runnerName;
+          body.appendChild(nameEl);
+
+          const rolesRow = document.createElement('div');
+          rolesRow.className = 'roster-row-roles';
           const roleBadge = document.createElement('span');
           roleBadge.className = 'crew-role-badge role-captain';
           roleBadge.textContent = 'Runner';
-          nameRow.append(nameEl, roleBadge);
-          body.appendChild(nameRow);
+          rolesRow.appendChild(roleBadge);
+          body.appendChild(rolesRow);
 
-          if (participant.phone || participant.email) {
-            const contact = document.createElement('div');
-            contact.className = 'crew-contact';
-            if (participant.phone) {
-              const a = document.createElement('a');
-              a.href = `tel:${participant.phone}`;
-              a.textContent = participant.phone;
-              contact.appendChild(a);
-            }
-            if (participant.email) {
-              const a = document.createElement('a');
-              a.href = `mailto:${participant.email}`;
-              a.textContent = participant.email;
-              contact.appendChild(a);
-            }
-            body.appendChild(contact);
-          }
-
-          if (participant.bio) {
-            const bio = document.createElement('p');
-            bio.className = 'crew-bio';
-            bio.textContent = participant.bio;
-            body.appendChild(bio);
-          }
+          row.appendChild(body);
 
           const actions = document.createElement('div');
-          actions.className = 'crew-card-actions';
-          const editBtn = document.createElement('button');
-          editBtn.type = 'button';
-          editBtn.textContent = 'Edit Profile';
+          actions.className = 'roster-row-actions';
+
+          if (participant.phone) {
+            const callBtn = rosterIconBtn('phone', `Call ${runnerName}`);
+            callBtn.addEventListener('click', () => { window.location.href = `tel:${participant.phone}`; });
+            actions.appendChild(callBtn);
+          } else if (participant.email) {
+            const mailBtn = rosterIconBtn('mail', `Email ${runnerName}`);
+            mailBtn.addEventListener('click', () => { window.location.href = `mailto:${participant.email}`; });
+            actions.appendChild(mailBtn);
+          }
+
+          const editBtn = rosterIconBtn('edit', 'Edit runner profile');
           editBtn.addEventListener('click', renderRunnerEdit);
           actions.appendChild(editBtn);
-          body.appendChild(actions);
 
-          card.appendChild(body);
-          runnerContentEl.appendChild(card);
+          row.appendChild(actions);
+          runnerContentEl.appendChild(row);
         }
 
         function renderRunnerEdit() {
@@ -588,156 +622,94 @@
         populateStationSelect(crewStartStationInput, 'Not assigned yet');
         populateStationSelect(crewEndStationInput, 'Through the finish');
 
-        function initials(name) {
-          return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
-        }
-
         function roleLabel(role) {
           return role === 'captain' ? 'Race Captain' : role === 'pacer' ? 'Pacer' : 'Crew';
         }
 
-        function buildCrewCard(member, isCaptain) {
-          const card = document.createElement('div');
-          card.className = isCaptain ? 'crew-captain-card' : 'crew-card';
+        function buildRosterRow(member) {
+          const row = document.createElement('div');
+          row.className = 'roster-row';
 
-          if (member.photo_url) {
-            const img = document.createElement('img');
-            img.className = 'crew-photo';
-            img.src = member.photo_url;
-            img.alt = member.name;
-            card.appendChild(img);
-          } else {
-            const placeholder = document.createElement('span');
-            placeholder.className = 'crew-avatar-placeholder';
-            placeholder.textContent = initials(member.name);
-            card.appendChild(placeholder);
-          }
+          row.appendChild(buildRosterAvatar(member.photo_url, member.name, member.email ? (member.invite_status || 'not_sent') : null));
 
           const body = document.createElement('div');
-          body.className = 'crew-card-body';
+          body.className = 'roster-row-body';
 
-          const nameRow = document.createElement('div');
-          nameRow.className = 'crew-name-row';
-          const nameEl = document.createElement('span');
-          nameEl.className = 'crew-name';
+          const nameEl = document.createElement('p');
+          nameEl.className = 'roster-row-name';
           nameEl.textContent = member.name;
+          body.appendChild(nameEl);
+
+          const rolesRow = document.createElement('div');
+          rolesRow.className = 'roster-row-roles';
           const roleBadge = document.createElement('span');
           roleBadge.className = `crew-role-badge role-${member.role}`;
           roleBadge.textContent = roleLabel(member.role);
-          nameRow.append(nameEl, roleBadge);
-          body.appendChild(nameRow);
+          rolesRow.appendChild(roleBadge);
+          body.appendChild(rolesRow);
 
           if (member.role === 'pacer' && (member.start_station || member.end_station)) {
-            const stationNote = document.createElement('p');
-            stationNote.className = 'crew-station-note';
+            const meta = document.createElement('p');
+            meta.className = 'roster-row-meta';
             const startText = member.start_station
-              ? `${member.start_station.name} (mile ${member.start_station.mile_marker})`
+              ? `${member.start_station.name} (mi ${member.start_station.mile_marker})`
               : 'Start TBD';
             const endText = member.end_station
-              ? `${member.end_station.name} (mile ${member.end_station.mile_marker})`
+              ? `${member.end_station.name} (mi ${member.end_station.mile_marker})`
               : 'Finish';
-            stationNote.textContent = `Paces ${startText} → ${endText}`;
-            body.appendChild(stationNote);
+            meta.textContent = `${startText} → ${endText}`;
+            body.appendChild(meta);
           }
 
-          if (member.phone || member.email) {
-            const contact = document.createElement('div');
-            contact.className = 'crew-contact';
-            if (member.phone) {
-              const a = document.createElement('a');
-              a.href = `tel:${member.phone}`;
-              a.textContent = member.phone;
-              contact.appendChild(a);
-            }
-            if (member.email) {
-              const a = document.createElement('a');
-              a.href = `mailto:${member.email}`;
-              a.textContent = member.email;
-              contact.appendChild(a);
-            }
-            body.appendChild(contact);
+          row.appendChild(body);
+
+          const actions = document.createElement('div');
+          actions.className = 'roster-row-actions';
+
+          if (member.phone) {
+            const callBtn = rosterIconBtn('phone', `Call ${member.name}`);
+            callBtn.addEventListener('click', () => { window.location.href = `tel:${member.phone}`; });
+            actions.appendChild(callBtn);
+          } else if (member.email) {
+            const mailBtn = rosterIconBtn('mail', `Email ${member.name}`);
+            mailBtn.addEventListener('click', () => { window.location.href = `mailto:${member.email}`; });
+            actions.appendChild(mailBtn);
           }
 
           if (member.email) {
-            const inviteRow = document.createElement('div');
-            inviteRow.className = 'crew-invite-row';
-
-            const statusBadge = document.createElement('span');
-            statusBadge.className = `crew-invite-badge invite-${member.invite_status || 'not_sent'}`;
-            statusBadge.textContent = member.invite_status === 'linked'
-              ? 'Linked to Account'
-              : member.invite_status === 'invited'
-                ? 'Invite Sent'
-                : 'Not Invited';
-            inviteRow.appendChild(statusBadge);
-
-            const inviteBtn = document.createElement('button');
-            inviteBtn.type = 'button';
-            inviteBtn.className = 'crew-invite-btn';
-            const idleLabel = member.invite_status === 'not_sent' || !member.invite_status ? 'Send Invite' : 'Resend';
-            inviteBtn.textContent = idleLabel;
+            const idleLabel = member.invite_status === 'not_sent' || !member.invite_status ? `Send invite to ${member.name}` : `Resend invite to ${member.name}`;
+            const inviteBtn = rosterIconBtn('send', idleLabel);
             inviteBtn.addEventListener('click', async () => {
               inviteBtn.disabled = true;
-              inviteBtn.textContent = 'Sending...';
               const { data, error } = await supabase.functions.invoke('send-crew-invite', {
                 body: { crew_member_id: member.id },
               });
+              inviteBtn.disabled = false;
               if (error) {
                 alert('Could not send invite: ' + error.message);
-                inviteBtn.disabled = false;
-                inviteBtn.textContent = idleLabel;
               } else {
                 member.invite_status = data.linked ? 'linked' : 'invited';
                 renderCrew();
               }
             });
-            inviteRow.appendChild(inviteBtn);
-
-            body.appendChild(inviteRow);
+            actions.appendChild(inviteBtn);
           }
 
-          if (member.bio) {
-            const bio = document.createElement('p');
-            bio.className = 'crew-bio';
-            bio.textContent = member.bio;
-            body.appendChild(bio);
-          }
-
-          if (member.tasks) {
-            const tasks = document.createElement('p');
-            tasks.className = 'crew-tasks';
-            const label = document.createElement('span');
-            label.className = 'crew-tasks-label';
-            label.textContent = 'Tasks: ';
-            tasks.appendChild(label);
-            tasks.appendChild(document.createTextNode(member.tasks));
-            body.appendChild(tasks);
-          }
-
-          const actions = document.createElement('div');
-          actions.className = 'crew-card-actions';
-
-          const editBtn = document.createElement('button');
-          editBtn.type = 'button';
-          editBtn.textContent = 'Edit';
+          const editBtn = rosterIconBtn('edit', `Edit ${member.name}`);
           editBtn.addEventListener('click', () => openCrewModal(member));
+          actions.appendChild(editBtn);
 
-          const deleteBtn = document.createElement('button');
-          deleteBtn.type = 'button';
-          deleteBtn.className = 'crew-delete-btn';
-          deleteBtn.textContent = 'Remove';
-          deleteBtn.addEventListener('click', async () => {
+          const removeBtn = rosterIconBtn('trash', `Remove ${member.name}`, 'roster-icon-danger');
+          removeBtn.addEventListener('click', async () => {
             if (!confirm(`Remove ${member.name} from the crew?`)) return;
             await supabase.from('crew_members').delete().eq('id', member.id);
             crew = crew.filter((m) => m.id !== member.id);
             renderCrew();
           });
+          actions.appendChild(removeBtn);
 
-          actions.append(editBtn, deleteBtn);
-          body.appendChild(actions);
-
-          card.appendChild(body);
-          return card;
+          row.appendChild(actions);
+          return row;
         }
 
         function renderCrew() {
@@ -751,33 +723,9 @@
             return;
           }
 
-          const captains = crew.filter((m) => m.role === 'captain');
-          const pacers = crew.filter((m) => m.role === 'pacer');
-          const support = crew.filter((m) => m.role === 'crew');
-
-          captains.forEach((m) => crewContentEl.appendChild(buildCrewCard(m, true)));
-
-          if (pacers.length > 0) {
-            const heading = document.createElement('p');
-            heading.className = 'crew-subheading';
-            heading.textContent = 'Pacers';
-            crewContentEl.appendChild(heading);
-            const grid = document.createElement('div');
-            grid.className = 'crew-grid';
-            pacers.forEach((m) => grid.appendChild(buildCrewCard(m, false)));
-            crewContentEl.appendChild(grid);
-          }
-
-          if (support.length > 0) {
-            const heading = document.createElement('p');
-            heading.className = 'crew-subheading';
-            heading.textContent = 'Crew';
-            crewContentEl.appendChild(heading);
-            const grid = document.createElement('div');
-            grid.className = 'crew-grid';
-            support.forEach((m) => grid.appendChild(buildCrewCard(m, false)));
-            crewContentEl.appendChild(grid);
-          }
+          const rolePriority = { captain: 0, pacer: 1, crew: 2 };
+          const sorted = [...crew].sort((a, b) => (rolePriority[a.role] ?? 3) - (rolePriority[b.role] ?? 3));
+          sorted.forEach((m) => crewContentEl.appendChild(buildRosterRow(m)));
         }
 
         function resetCrewForm() {
@@ -939,6 +887,29 @@
           return new Date(new Date(participant.start_time).getTime() + hoursIn * 3600 * 1000);
         }
 
+        function elevationAtMile(mile) {
+          if (mile == null) return null;
+          let closest = null;
+          let closestDiff = Infinity;
+          for (const p of points) {
+            const diff = Math.abs(p[3] - mile);
+            if (diff < closestDiff) {
+              closestDiff = diff;
+              closest = p[2];
+            }
+          }
+          return closest;
+        }
+
+        function pacerForStation(station) {
+          return crew.find((m) => {
+            if (m.role !== 'pacer') return false;
+            const startMile = m.start_station ? m.start_station.mile_marker : 0;
+            const endMile = m.end_station ? m.end_station.mile_marker : race.total_distance_miles;
+            return station.mile_marker >= startMile && station.mile_marker <= endMile;
+          });
+        }
+
         const finishProjectionCard = document.getElementById('finish-projection-card');
         const fpGoalTimeEl = document.getElementById('fp-goal-time');
         const fpSubEl = document.getElementById('fp-sub');
@@ -1090,11 +1061,6 @@
         function buildDropBagPanel(station) {
           const panel = document.createElement('div');
           panel.className = 'drop-bag-panel';
-
-          const heading = document.createElement('p');
-          heading.className = 'drop-bag-heading';
-          heading.textContent = 'Drop Bag Checklist';
-          panel.appendChild(heading);
 
           const { nextRestock, segmentMiles, segmentHours, targetCarbs, targetCalories } = computeNutritionTarget(station);
 
@@ -1332,10 +1298,167 @@
           });
           panel.appendChild(newItemForm);
 
+          if (station.drop_bag_notes) {
+            const instructions = document.createElement('p');
+            instructions.className = 'drop-bag-instructions';
+            instructions.textContent = station.drop_bag_notes;
+            panel.appendChild(instructions);
+          }
+
           return panel;
         }
 
-        function renderStationList() {
+        function buildStatusPill(station) {
+          const pill = document.createElement('span');
+          pill.className = 'aid-detail-status-pill' + (station.has_crew_access ? ' is-crew' : '');
+          pill.textContent = station.has_crew_access ? 'Crew accessible' : station.has_drop_bag ? 'Drop bag only' : 'Aid station';
+          return pill;
+        }
+
+        function buildDetailStat(label, value) {
+          const stat = document.createElement('div');
+          stat.className = 'aid-detail-stat';
+          const labelEl = document.createElement('div');
+          labelEl.className = 'aid-detail-stat-label';
+          labelEl.textContent = label;
+          const valueEl = document.createElement('div');
+          valueEl.className = 'aid-detail-stat-value';
+          valueEl.textContent = value ?? '—';
+          stat.append(labelEl, valueEl);
+          return stat;
+        }
+
+        function buildDetailBlock(title, extraClass) {
+          const block = document.createElement('div');
+          block.className = 'aid-detail-block' + (extraClass ? ` ${extraClass}` : '');
+          const titleEl = document.createElement('p');
+          titleEl.className = 'aid-detail-block-title';
+          titleEl.textContent = title;
+          block.appendChild(titleEl);
+          return block;
+        }
+
+        function renderAidDetail(station) {
+          const card = document.getElementById('aid-detail-card');
+          card.innerHTML = '';
+          if (!station) return;
+
+          const header = document.createElement('div');
+          header.className = 'aid-detail-header';
+
+          const topRow = document.createElement('div');
+          topRow.className = 'aid-detail-top-row';
+
+          const titleWrap = document.createElement('div');
+          const eyebrow = document.createElement('p');
+          eyebrow.className = 'aid-detail-eyebrow';
+          eyebrow.textContent = `Mile ${station.mile_marker}`;
+          const name = document.createElement('h2');
+          name.className = 'aid-detail-name';
+          name.textContent = station.name;
+          titleWrap.append(eyebrow, name);
+
+          topRow.append(titleWrap, buildStatusPill(station));
+          header.appendChild(topRow);
+
+          if (station.notes) {
+            const notesEl = document.createElement('p');
+            notesEl.className = 'aid-detail-notes';
+            notesEl.textContent = station.notes;
+            header.appendChild(notesEl);
+          }
+
+          const statsRow = document.createElement('div');
+          statsRow.className = 'aid-detail-stats';
+          statsRow.appendChild(buildDetailStat('ETA', formatArrival(computeArrival(station.mile_marker))));
+          statsRow.appendChild(buildDetailStat('Cutoff', station.cutoff_time));
+          const ele = elevationAtMile(station.mile_marker);
+          statsRow.appendChild(buildDetailStat('Elevation', ele != null ? `${Math.round(ele).toLocaleString()}'` : null));
+          header.appendChild(statsRow);
+
+          card.appendChild(header);
+
+          const body = document.createElement('div');
+          body.className = 'aid-detail-body';
+
+          const pacerBlock = buildDetailBlock('Pacer');
+          const pacer = pacerForStation(station);
+          if (pacer) {
+            const pacerRow = document.createElement('div');
+            pacerRow.className = 'aid-pacer-row';
+            pacerRow.appendChild(buildRosterAvatar(pacer.photo_url, pacer.name, null));
+            const pacerBody = document.createElement('div');
+            const pacerName = document.createElement('p');
+            pacerName.className = 'aid-pacer-name';
+            pacerName.textContent = pacer.name;
+            const pacerMeta = document.createElement('p');
+            pacerMeta.className = 'aid-pacer-meta';
+            pacerMeta.textContent = `With you through ${pacer.end_station ? `mile ${pacer.end_station.mile_marker}` : 'the finish'}`;
+            pacerBody.append(pacerName, pacerMeta);
+            pacerRow.appendChild(pacerBody);
+            pacerBlock.appendChild(pacerRow);
+          } else {
+            const none = document.createElement('p');
+            none.className = 'aid-detail-empty';
+            none.textContent = 'No pacer assigned at this point.';
+            pacerBlock.appendChild(none);
+          }
+          body.appendChild(pacerBlock);
+
+          if (station.mantra) {
+            const mantraBlock = buildDetailBlock('Mantra');
+            const mantraText = document.createElement('p');
+            mantraText.className = 'aid-mantra-text';
+            mantraText.textContent = `“${station.mantra}”`;
+            mantraBlock.appendChild(mantraText);
+            body.appendChild(mantraBlock);
+          }
+
+          if (station.food_notes) {
+            const foodBlock = buildDetailBlock('Food & Fuel');
+            const pillsWrap = document.createElement('div');
+            pillsWrap.className = 'aid-food-pills';
+            station.food_notes.split(',').map((s) => s.trim()).filter(Boolean).forEach((item) => {
+              const pill = document.createElement('span');
+              pill.className = 'aid-food-pill';
+              pill.textContent = item;
+              pillsWrap.appendChild(pill);
+            });
+            foodBlock.appendChild(pillsWrap);
+            body.appendChild(foodBlock);
+          }
+
+          const dropBagBlock = buildDetailBlock('Drop Bag', 'aid-detail-block-full');
+          if (station.has_drop_bag) {
+            dropBagBlock.appendChild(buildDropBagPanel(station));
+          } else {
+            const note = document.createElement('p');
+            note.className = 'aid-detail-empty';
+            note.textContent = station.drop_bag_notes || 'No drop bag access at this station.';
+            dropBagBlock.appendChild(note);
+            const target = computeNutritionTarget(station);
+            if (target.targetCarbs != null) {
+              const nutritionNote = document.createElement('p');
+              nutritionNote.className = 'aid-station-nutrition-note';
+              const goalNote = participant.goal_finish_hours ? '' : ' (default 33hr goal)';
+              nutritionNote.textContent = `Nutrition needed until ${target.nextRestock.name} (${target.segmentMiles.toFixed(1)} mi, ~${target.segmentHours.toFixed(1)}hr): ${Math.round(target.targetCarbs)}g carbs · ${Math.round(target.targetCalories)} cal${goalNote}`;
+              dropBagBlock.appendChild(nutritionNote);
+            }
+          }
+          body.appendChild(dropBagBlock);
+
+          card.appendChild(body);
+        }
+
+        let selectedStationId = null;
+
+        function selectStation(id) {
+          selectedStationId = id;
+          renderAidTimeline();
+          renderAidDetail(stations.find((s) => s.id === id));
+        }
+
+        function renderAidTimeline() {
           listEl.innerHTML = '';
 
           if (stations.length === 0) {
@@ -1344,86 +1467,47 @@
           }
 
           stations.forEach((station, i) => {
-            const nextMarker = i < stations.length - 1
-              ? stations[i + 1].mile_marker
-              : race.total_distance_miles;
-            const gap = nextMarker != null ? (nextMarker - station.mile_marker).toFixed(1) : null;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'aid-timeline-row' + (station.id === selectedStationId ? ' is-active' : '');
 
-            const row = document.createElement('div');
-            row.className = 'aid-station-row';
+            const badge = document.createElement('span');
+            badge.className = 'aid-station-badge-num' + (station.has_crew_access ? '' : ' no-crew');
+            badge.textContent = i + 1;
+            btn.appendChild(badge);
 
-            const badgeEl = document.createElement('span');
-            badgeEl.className = 'aid-station-badge-num' + (station.has_crew_access ? '' : ' no-crew');
-            badgeEl.textContent = i + 1;
-
-            const nameWrap = document.createElement('span');
-            nameWrap.className = 'aid-station-name-wrap';
-
-            const mileLabelEl = document.createElement('span');
-            mileLabelEl.className = 'aid-station-mile-label';
-            mileLabelEl.textContent = `Mile ${station.mile_marker}`;
-            nameWrap.appendChild(mileLabelEl);
-
+            const body = document.createElement('span');
+            body.className = 'aid-timeline-body';
             const nameEl = document.createElement('span');
-            nameEl.className = 'aid-station-name';
+            nameEl.className = 'aid-timeline-name';
             nameEl.textContent = station.name;
-            nameWrap.appendChild(nameEl);
-
-            if (station.notes) {
-              const notesEl = document.createElement('span');
-              notesEl.className = 'aid-station-notes';
-              notesEl.textContent = station.notes;
-              nameWrap.appendChild(notesEl);
-            }
-
-            const badgesEl = document.createElement('span');
-            badgesEl.className = 'aid-station-badges';
-            if (station.has_crew_access) {
-              const b = document.createElement('span');
-              b.className = 'aid-badge aid-badge-crew';
-              b.textContent = 'Crew Access';
-              badgesEl.appendChild(b);
-            }
-            if (station.has_drop_bag) {
-              const b = document.createElement('span');
-              b.className = 'aid-badge aid-badge-dropbag';
-              b.textContent = 'Drop Bag';
-              badgesEl.appendChild(b);
-            }
-            if (station.cutoff_time) {
-              const b = document.createElement('span');
-              b.className = 'aid-badge aid-badge-cutoff';
-              b.textContent = `Cutoff ${station.cutoff_time}`;
-              badgesEl.appendChild(b);
-            }
+            const metaEl = document.createElement('span');
+            metaEl.className = 'aid-timeline-meta';
             const arrival = formatArrival(computeArrival(station.mile_marker));
-            if (arrival) {
-              const b = document.createElement('span');
-              b.className = 'aid-badge aid-badge-arrival';
-              b.textContent = `Est. Arrival ${arrival}`;
-              badgesEl.appendChild(b);
+            metaEl.textContent = `Mile ${station.mile_marker}${arrival ? ' · ETA ' + arrival : ''}`;
+            body.append(nameEl, metaEl);
+            btn.appendChild(body);
+
+            const tags = document.createElement('span');
+            tags.className = 'aid-timeline-tags';
+            if (!station.has_crew_access) {
+              const lock = document.createElement('span');
+              lock.className = 'aid-timeline-lock';
+              lock.innerHTML = ROSTER_ICONS.lock;
+              lock.title = 'No crew access';
+              tags.appendChild(lock);
             }
-            nameWrap.appendChild(badgesEl);
-
-            if (station.has_drop_bag) {
-              nameWrap.appendChild(buildDropBagPanel(station));
-            } else {
-              const target = computeNutritionTarget(station);
-              if (target.targetCarbs != null) {
-                const nutritionNote = document.createElement('p');
-                nutritionNote.className = 'aid-station-nutrition-note';
-                const goalNote = participant.goal_finish_hours ? '' : ' (default 33hr goal)';
-                nutritionNote.textContent = `Nutrition needed until ${target.nextRestock.name} (${target.segmentMiles.toFixed(1)} mi, ~${target.segmentHours.toFixed(1)}hr): ${Math.round(target.targetCarbs)}g carbs · ${Math.round(target.targetCalories)} cal${goalNote}`;
-                nameWrap.appendChild(nutritionNote);
-              }
+            const pacer = pacerForStation(station);
+            if (pacer) {
+              const chip = document.createElement('span');
+              chip.className = 'aid-timeline-pacer-chip';
+              chip.textContent = pacer.name.split(' ')[0];
+              tags.appendChild(chip);
             }
+            btn.appendChild(tags);
 
-            const gapEl = document.createElement('span');
-            gapEl.className = 'aid-station-gap';
-            gapEl.textContent = gap != null ? `${gap} mi to next` : '';
-
-            row.append(badgeEl, nameWrap, gapEl);
-            listEl.appendChild(row);
+            btn.addEventListener('click', () => selectStation(station.id));
+            listEl.appendChild(btn);
           });
         }
 
@@ -1438,12 +1522,14 @@
               iconSize: [24, 24],
               iconAnchor: [12, 12],
             });
-            L.marker([station.lat, station.lon], { icon })
+            const marker = L.marker([station.lat, station.lon], { icon })
               .addTo(map).bindTooltip(tooltipParts.join(' · '));
+            marker.on('click', () => selectStation(station.id));
           }
         });
 
-        renderStationList();
+        const defaultStation = stations.find((s) => s.mile_marker > 0) || stations[0];
+        if (defaultStation) selectStation(defaultStation.id);
         refreshFinishProjection();
 
         const startTimeInput = document.getElementById('start-time-input');
@@ -1486,7 +1572,8 @@
             participant.goal_finish_hours = newGoalHours;
             pacingStatus.textContent = 'Saved. Estimated arrival times updated below.';
             pacingStatus.classList.add('auth-status-success');
-            renderStationList();
+            renderAidTimeline();
+            if (selectedStationId) renderAidDetail(stations.find((s) => s.id === selectedStationId));
             refreshFinishProjection();
           }
         });

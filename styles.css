@@ -1477,6 +1477,47 @@ h2.center {
   margin-top: 0;
 }
 
+.photo-viewable {
+  cursor: zoom-in;
+}
+
+.photo-viewer-overlay {
+  background: rgba(16, 22, 20, 0.85);
+}
+
+.photo-viewer-stage {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.photo-viewer-stage img {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.photo-viewer-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: var(--color-ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-card);
+}
+
 .crew-photo-row {
   display: flex;
   align-items: center;

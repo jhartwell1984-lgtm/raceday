@@ -202,6 +202,7 @@
   <script type="module">
     import { supabase } from './supabase-client.js';
     import { cropImageFile } from './photo-crop.js';
+    import { makeViewable } from './photo-viewer.js';
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -252,6 +253,7 @@
         img.className = 'roster-avatar';
         img.src = photoUrl;
         img.alt = name;
+        makeViewable(img);
         wrap.appendChild(img);
       } else {
         const placeholder = document.createElement('span');
@@ -360,6 +362,7 @@
           heroAvatarImg.hidden = false;
           heroAvatarImg.style.display = 'block';
           heroAvatarPlaceholder.style.display = 'none';
+          makeViewable(heroAvatarImg);
         } else {
           heroAvatarPlaceholder.textContent = runnerName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
         }

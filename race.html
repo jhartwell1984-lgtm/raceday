@@ -6,6 +6,7 @@
   <title>Race — Crew, by RaceDay</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
 </head>
 <body class="race-modern">
 
@@ -197,8 +198,10 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script type="module">
     import { supabase } from './supabase-client.js';
+    import { cropImageFile } from './photo-crop.js';
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -437,10 +440,13 @@
           photoInput.type = 'file';
           photoInput.accept = 'image/*';
           photoInput.className = 'crew-photo-input';
-          photoInput.addEventListener('change', () => {
+          photoInput.addEventListener('change', async () => {
             const file = photoInput.files[0];
+            photoInput.value = '';
             if (!file) return;
-            photoFile = file;
+            const cropped = await cropImageFile(file);
+            if (!cropped) return;
+            photoFile = cropped;
             const reader = new FileReader();
             reader.onload = () => {
               preview.src = reader.result;
@@ -448,7 +454,7 @@
               preview.style.display = 'block';
               placeholder.style.display = 'none';
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(cropped);
           });
 
           const photoRow = document.createElement('div');
@@ -787,10 +793,13 @@
           crewStationField.style.display = isPacer ? '' : 'none';
         });
 
-        crewPhotoInput.addEventListener('change', () => {
+        crewPhotoInput.addEventListener('change', async () => {
           const file = crewPhotoInput.files[0];
+          crewPhotoInput.value = '';
           if (!file) return;
-          selectedPhotoFile = file;
+          const cropped = await cropImageFile(file);
+          if (!cropped) return;
+          selectedPhotoFile = cropped;
           const reader = new FileReader();
           reader.onload = () => {
             crewPhotoPreview.src = reader.result;
@@ -798,7 +807,7 @@
             crewPhotoPreview.style.display = 'block';
             crewPhotoPlaceholder.style.display = 'none';
           };
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(cropped);
         });
 
         crewForm.addEventListener('submit', async (e) => {

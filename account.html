@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Account &amp; Settings — Crew, by RaceDay</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
 </head>
 <body>
 
@@ -67,8 +68,10 @@
   </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
   <script type="module">
     import { supabase } from './supabase-client.js';
+    import { cropImageFile } from './photo-crop.js';
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -122,10 +125,13 @@
       document.getElementById('current-email-display').textContent = session.user.email;
     }
 
-    photoInput.addEventListener('change', () => {
+    photoInput.addEventListener('change', async () => {
       const file = photoInput.files[0];
+      photoInput.value = '';
       if (!file) return;
-      photoFile = file;
+      const cropped = await cropImageFile(file);
+      if (!cropped) return;
+      photoFile = cropped;
       const reader = new FileReader();
       reader.onload = () => {
         photoPreview.src = reader.result;
@@ -133,7 +139,7 @@
         photoPreview.style.display = 'block';
         photoPlaceholder.style.display = 'none';
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(cropped);
     });
 
     document.getElementById('profile-form').addEventListener('submit', async (e) => {

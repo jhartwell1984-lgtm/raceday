@@ -412,7 +412,7 @@
           runnerContentEl.innerHTML = '';
 
           const card = document.createElement('div');
-          card.className = 'crew-captain-card';
+          card.className = 'auth-form';
 
           const photoWrap = document.createElement('div');
           photoWrap.className = 'crew-photo-preview-wrap';
@@ -454,9 +454,6 @@
           const photoRow = document.createElement('div');
           photoRow.className = 'crew-photo-row';
           photoRow.append(photoWrap, photoInput);
-
-          const body = document.createElement('div');
-          body.className = 'crew-card-body';
 
           const bioLabel = document.createElement('label');
           bioLabel.className = 'auth-label';
@@ -541,9 +538,8 @@
           cancelBtn.addEventListener('click', renderRunnerDisplay);
 
           actions.append(saveBtn, cancelBtn);
-          body.append(bioLabel, bioInput, phoneLabel, phoneInput, emailLabel, emailInput, actions, statusEl);
+          card.append(photoRow, bioLabel, bioInput, phoneLabel, phoneInput, emailLabel, emailInput, actions, statusEl);
 
-          card.append(photoRow, body);
           runnerContentEl.appendChild(card);
         }
 

@@ -1446,8 +1446,14 @@ h2.center {
 .crew-photo-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 8px;
+}
+
+.crew-photo-row input[type="file"] {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .crew-photo-preview-wrap {

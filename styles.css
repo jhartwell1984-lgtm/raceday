@@ -1404,7 +1404,8 @@ h2.center {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 100;
+  /* Above Leaflet's internal panes/controls (which reach z-index 1000) so modals never render behind the map. */
+  z-index: 2000;
   overflow-y: auto;
 }
 

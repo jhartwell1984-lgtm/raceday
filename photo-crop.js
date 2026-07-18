@@ -70,7 +70,7 @@ export function cropImageFile(file) {
         cleanup(null);
         return;
       }
-      cropper.getCroppedCanvas({ width: 480, height: 480, imageSmoothingQuality: 'high' }).toBlob((blob) => {
+      cropper.getCroppedCanvas({ width: 1024, height: 1024, imageSmoothingQuality: 'high' }).toBlob((blob) => {
         if (!blob) {
           cleanup(null);
           return;
@@ -78,7 +78,7 @@ export function cropImageFile(file) {
         const baseName = file.name ? file.name.replace(/\.[^./\\]+$/, '') : 'photo';
         const croppedFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
         cleanup(croppedFile);
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.92);
     }
 
     function onCancel() {

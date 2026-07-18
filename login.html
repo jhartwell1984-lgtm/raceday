@@ -264,7 +264,7 @@
           email,
           password,
           options: {
-            emailRedirectTo: dashboardUrl,
+            emailRedirectTo: `${dashboardUrl}?welcome=1`,
             data: {
               full_name: fullNameInput.value.trim(),
               account_type: accountTypeInput.value,
@@ -279,7 +279,7 @@
           statusEl.textContent = error.message;
           statusEl.classList.add('auth-status-error');
         } else if (data.session) {
-          window.location.href = 'dashboard.html';
+          window.location.href = 'dashboard.html?welcome=1';
         } else {
           showEmailSent(
             'Confirm your email',

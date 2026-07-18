@@ -46,6 +46,18 @@
   </main>
   </div>
 
+  <div class="modal-overlay" id="welcome-modal-overlay" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Welcome to Race Day Ultra</h3>
+        <button type="button" class="modal-close" id="welcome-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <p class="auth-sub">
+        You're all set. Add a race, build out your crew, and start planning your next ultra.
+      </p>
+    </div>
+  </div>
+
   <script type="module">
     import { supabase } from './supabase-client.js';
 
@@ -116,6 +128,28 @@
     document.querySelectorAll('.sidebar-link').forEach((link) => {
       if (link.getAttribute('href') === currentPage) link.classList.add('is-active');
     });
+
+    const welcomeParams = new URLSearchParams(window.location.search);
+    if (welcomeParams.get('welcome') === '1') {
+      const welcomeOverlay = document.getElementById('welcome-modal-overlay');
+
+      const closeWelcomeModal = () => {
+        welcomeOverlay.hidden = true;
+        welcomeOverlay.style.display = 'none';
+      };
+
+      welcomeOverlay.hidden = false;
+      welcomeOverlay.style.display = 'flex';
+
+      document.getElementById('welcome-modal-close').addEventListener('click', closeWelcomeModal);
+      welcomeOverlay.addEventListener('click', (e) => {
+        if (e.target === welcomeOverlay) closeWelcomeModal();
+      });
+
+      welcomeParams.delete('welcome');
+      const cleanQuery = welcomeParams.toString();
+      window.history.replaceState(null, '', window.location.pathname + (cleanQuery ? `?${cleanQuery}` : ''));
+    }
   </script>
 
 </body>
